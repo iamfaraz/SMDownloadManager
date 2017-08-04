@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">SM Download Manager</string>
+
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+    <string name="app_description">Download Files with ease</string>
+    <string name="action_settings">Settings</string>
+    <string name="textSeparator">  \u2022  </string>
+    <string name="title_activity_main_screen">mainScreen</string>
+    <string name="section_format">Hello World from section: %1$d</string>
+
+    <string name="title_activity_download_file">Download File</string>
+</resources>

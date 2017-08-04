@@ -1,0 +1,51 @@
+<resources>
+
+    <!-- Base application theme. -->
+    <style name="AppTheme" parent="Theme.AppCompat.Light.DarkActionBar">
+        <!-- Customize your theme here. -->
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+        <item name="colorAccent">@color/colorAccent</item>
+
+        <!-- required for toolbar in prelolipop -->
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:actionModeStyle">@style/MyTheme.ActionMode</item>
+        <item name="windowActionModeOverlay">true</item>
+        <item name="actionModeStyle">@style/LywActionMode</item>
+    </style>
+
+    <style name="MyTheme.ActionMode" parent="@android:style/Theme.Holo.Light">
+        <item name="android:actionModeBackground">@color/colorPrimary</item>
+    </style>
+
+    <style name="AppTheme.NoActionBar">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+
+        <!-- required for toolbar in prelolipop -->
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:actionModeStyle">@style/MyTheme.ActionMode</item>
+        <item name="windowActionModeOverlay">true</item>
+        <item name="actionModeStyle">@style/LywActionMode</item>
+    </style>
+
+    <style name="Base.Widget.AppCompat.ActionMode" parent="">
+        <item name="background">?attr/actionModeBackground</item>
+        <item name="backgroundSplit">?attr/actionModeSplitBackground</item>
+        <item name="height">?attr/actionBarSize</item>
+        <item name="titleTextStyle">@style/TextAppearance.AppCompat.Widget.ActionMode.Title</item>
+        <item name="subtitleTextStyle">@style/TextAppearance.AppCompat.Widget.ActionMode.Subtitle
+        </item>
+        <item name="closeItemLayout">@layout/abc_action_mode_close_item_material</item>
+    </style>
+
+    <style name="LywActionMode" parent="Base.Widget.AppCompat.ActionMode">
+        <item name="background">@color/colorPrimary</item>
+        <item name="backgroundSplit">@color/colorPrimary</item>
+    </style>
+
+    <style name="AppTheme.AppBarOverlay" parent="ThemeOverlay.AppCompat.Dark.ActionBar" />
+
+    <style name="AppTheme.PopupOverlay" parent="ThemeOverlay.AppCompat.Light" />
+
+</resources>
