@@ -3,6 +3,10 @@ package net.smtechies.smdownloadmanager.utils;
 import android.content.ContentValues;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.util.Log;
+
+import java.util.ArrayList;
+import java.util.HashMap;
 
 /**
  * Created by Faraz on 30/07/2017.
@@ -86,6 +90,7 @@ public class FileDatabaseUtils {
     public void DeleteTable(String tableName) {
         db.delete(tableName, null, null);
         db.execSQL("vacuum");
+        Log.d("FDU: Delete Table", "deleted");
     }
 
     public void DeleteFileFromDatabase(String column, String[] columnArgs) {
@@ -93,6 +98,7 @@ public class FileDatabaseUtils {
         column = column + " LIKE ?";
         // Issue SQL statement.
         db.delete(Rows.TABLE_NAME, column, columnArgs);
+        Log.d("FDU: Delete Entry", "deleted");
     }
 
     public void UpdateFileinDatabase(String[] columnsToUpdate, String[] columnValues, String whereColumn, String[] whereArgs) {
@@ -113,4 +119,35 @@ public class FileDatabaseUtils {
                 whereColumn,
                 whereArgs);
     }
+
+    public boolean IdInDB(int id) {
+        try {
+            Cursor cursor = getAllData();
+
+            ArrayList<HashMap<String, String>> maplist = new ArrayList<HashMap<String, String>>();
+            // looping through all rows and adding to list
+
+            if (cursor.moveToFirst()) {
+                do {
+                    HashMap<String, String> map = new HashMap<String, String>();
+                    for (int i = 0; i < cursor.getColumnCount(); i++) {
+                        map.put(cursor.getColumnName(i), cursor.getString(i));
+                    }
+
+                    maplist.add(map);
+                } while (cursor.moveToNext());
+            }
+
+            for (int i = 0; i < maplist.size(); i++) {
+                if (maplist.get(i).get(Rows.fileId) == String.valueOf(id)) {
+                    return true;
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            Log.d("FDU: IdinDB Exception", e.getLocalizedMessage());
+        }
+        return false;
+    }
+
 }

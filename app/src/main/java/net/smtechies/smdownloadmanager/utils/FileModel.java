@@ -8,7 +8,7 @@ import android.widget.ImageButton;
 
 public class FileModel {
 
-    private int fileId;
+    private long fileId;
     private ImageButton statusButton;
     private String fileName;
     private int fileProgress;
@@ -21,7 +21,8 @@ public class FileModel {
     private String filePath;
     private String fileDName;
 
-    public FileModel(int fileId, String fileName, int fileProgress,
+
+    public FileModel(long fileId, String fileName, int fileProgress,
                      String fileStatus, String fileETA, String fileSize,
                      String fileSpeed, String fileDate, String fileUrl,
                      String filePath, String fileDName) {
@@ -47,11 +48,11 @@ public class FileModel {
         this.fileDName = fileDName;
     }
 
-    public int getFileId() {
+    public long getFileId() {
         return fileId;
     }
 
-    public void setFileId(int fileId) {
+    public void setFileId(long fileId) {
         this.fileId = fileId;
     }
 

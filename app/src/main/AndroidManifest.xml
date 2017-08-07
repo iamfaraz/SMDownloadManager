@@ -12,26 +12,21 @@
     <application
         android:name=".SMDM"
         android:allowBackup="true"
+        android:configChanges="orientation|keyboardHidden|screenLayout|screenSize"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/AppTheme">
-        <activity
-            android:name=".ui.MainScreen"
-            android:configChanges="orientation|keyboardHidden|screenLayout|screenSize"
-            android:label="@string/app_name"
-            android:launchMode="singleTop"
-            android:screenOrientation="portrait"
-            android:theme="@style/AppTheme.NoActionBar">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
-
-
+        android:theme="@style/AppTheme.NoActionBar">
+        <provider
+            android:name=".utils.GenericFileProvider"
+            android:authorities="${applicationId}.net.smtechies.smdownloadmanager.provider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/provider_paths" />
+        </provider>
         <activity android:name=".ui.DownloadFile">
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
@@ -59,6 +54,21 @@
                 <data android:mimeType="video/*" />
                 <data android:mimeType="audio/*" />
                 <data android:mimeType="image/*" />
+                <data android:mimeType="text/*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:mimeType="application/*" />
+                <data android:mimeType="audio/*" />
+                <data android:mimeType="image/*" />
+                <data android:mimeType="message/*" />
+                <data android:mimeType="multipart/*" />
+                <data android:mimeType="text/*" />
+                <data android:mimeType="video/*" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
@@ -334,45 +344,30 @@
                 <data android:pathPattern=".*\\.XSPF" />
             </intent-filter>
         </activity>
-        <activity android:name=".ui.Redirection">
-            <!-- Register to handle email attachments -->
-            <!-- WARNING: Do NOT use android:host="*" for these as they will not work properly -->
+        <activity
+            android:name=".ui.MainActivity"
+            android:configChanges="orientation|keyboardHidden|screenLayout|screenSize"
+            android:label="@string/app_name"
+            android:theme="@style/AppTheme.NoActionBar">
             <intent-filter>
-                <!-- needed for properly formatted email messages -->
-                <data
-                    android:scheme="content"
-                    android:mimeType="application/vnd.smdownloadmanager"
-                    android:pathPattern=".*\\.mp3" />
-                <!-- needed for mangled email messages -->
-                <data
-                    android:scheme="content"
-                    android:mimeType="application/smdownloadmanager"
-                    android:pathPattern=".*\\.mp3" />
-                <!-- needed for mangled email messages -->
-                <data
-                    android:scheme="content"
-                    android:mimeType="application/octet-stream"
-                    android:pathPattern=".*\\.mp3" />
+                <action android:name="android.intent.action.MAIN" />
 
-                <action android:name="android.intent.action.VIEW" />
-
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-            </intent-filter>
-
-            <!-- Register to handle file opening -->
-            <intent-filter>
-                <data android:scheme="file"
-                    android:mimeType="*/*"
-                    android:pathPattern=".*\\.mp3"
-                    android:host="*"/>
-
-                <action android:name="android.intent.action.VIEW" />
-
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
+                <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".ui.Settings"
+            android:configChanges="orientation|keyboardHidden|screenLayout|screenSize"
+            android:label="@string/title_activity_settings"
+            android:parentActivityName=".ui.MainActivity"
+            android:theme="@style/AppTheme">
+
+            <!-- Parent activity meta-data to support 4.0 and lower -->
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".ui.MainActivity" />
+        </activity>
+        <activity android:name=".ui.FileInfoActivity"></activity>
     </application>
 
 </manifest>

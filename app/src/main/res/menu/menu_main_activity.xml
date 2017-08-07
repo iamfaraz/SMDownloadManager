@@ -1,14 +1,18 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    tools:context="net.smtechies.smdownloadmanager.ui.MainScreen">
+    tools:context="net.smtechies.smdownloadmanager.ui.MainActivity">
     <item
         android:id="@+id/action_settings"
+        android:icon="@drawable/ic_menu_settings"
+        android:iconTint="@android:color/white"
         android:orderInCategory="100"
         android:title="@string/action_settings"
-        app:showAsAction="never" />
+        app:showAsAction="always" />
     <item
         android:id="@+id/action_exit"
+        android:icon="@drawable/ic_menu_shutdown"
+        android:iconTint="@android:color/white"
         android:orderInCategory="101"
         android:title="Shutdown"
         app:showAsAction="never" />
