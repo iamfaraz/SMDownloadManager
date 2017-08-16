@@ -1,159 +1,93 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="match_parent"
+<android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="fill_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
-    tools:context="net.smtechies.smdownloadmanager.ui.FileInfoActivity">
+    android:background="@android:color/white"
+    android:orientation="vertical">
+
+    <TextView
+        android:id="@+id/cfid_tv_fileName"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="8dp"
+        android:layout_marginLeft="8dp"
+        android:layout_marginRight="8dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="8dp"
+        android:text="FileName"
+        android:textSize="20dip"
+        android:textStyle="bold"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/cfid_tv_Path"
+        android:layout_width="395dp"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="8dp"
+        android:layout_marginRight="8dp"
+        android:layout_marginTop="13dp"
+        android:text="Path: /storage/emulated/0/Download/"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/cfid_tv_fileName" />
+
+    <TextView
+        android:id="@+id/cfid_tv_Date"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:layout_marginLeft="8dp"
+        android:layout_marginRight="8dp"
+        android:layout_marginTop="8dp"
+        android:text="Jun 1"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintHorizontal_bias="0.09"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toLeftOf="@+id/linearLayout"
+        app:layout_constraintTop_toBottomOf="@+id/cfid_tv_Path" />
 
     <LinearLayout
-        android:layout_width="match_parent"
+        android:id="@+id/linearLayout"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="20dp">
+        android:layout_marginBottom="8dp"
+        android:layout_marginLeft="8dp"
+        android:layout_marginRight="8dp"
+        android:layout_marginTop="12dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintHorizontal_bias="1.0"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/cfid_tv_Path">
 
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:paddingLeft="5dp"
-            android:paddingRight="5dp">
-
-            <ImageView
-                android:id="@+id/fd_iv_fileType"
-                android:layout_width="50dp"
-                android:layout_height="50dp"
-                android:src="@drawable/filetype_file" />
-
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="match_parent"
-                android:orientation="vertical"
-                android:weightSum="100">
-
-                <TextView
-                    android:id="@+id/fd_tv_fileName"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="70"
-                    android:paddingTop="5dp"
-                    android:text="Faraz Ahmad.exe"
-                    android:textAppearance="@style/TextAppearance.AppCompat.Body1"
-                    android:textSize="20dp" />
-
-                <TextView
-                    android:id="@+id/fd_tv_fileStatus"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="30"
-                    android:text="Downloading" />
-            </LinearLayout>
-        </LinearLayout>
-
-        <ProgressBar
-            android:id="@+id/fd_pb_fileProgress"
-            style="?android:attr/progressBarStyleHorizontal"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:paddingBottom="5dp"
-            android:paddingTop="5dp"
-            android:progress="50" />
-
-        <TextView
-            android:id="@+id/fd_tv_fileUrl"
+        <Button
+            android:id="@+id/cfid_btn_hide"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:paddingBottom="5dp"
-            android:paddingTop="5dp"
-            android:text="http://www.google.com.pk/faraz.exe"
-            tools:layout_editor_absoluteX="0dp"
-            tools:layout_editor_absoluteY="0dp" />
+            android:background="@android:color/transparent"
+            android:text="Hide"
+            android:textColor="@color/colorAccent" />
 
-        <TextView
-            android:id="@+id/fd_tv_filePath"
+        <Button
+            android:id="@+id/cfid_btn_delete"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:paddingBottom="5dp"
-            android:paddingTop="5dp"
-            android:text="/storage/emulated/0/Downloads/"
-            tools:layout_editor_absoluteX="0dp"
-            tools:layout_editor_absoluteY="0dp" />
+            android:background="@android:color/transparent"
+            android:text="Delete"
+            android:textColor="@color/colorAccent" />
 
-        <LinearLayout
+        <Button
+            android:id="@+id/cfid_btn_open"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="end"
-            android:orientation="horizontal">
+            android:background="@android:color/transparent"
+            android:text="Open"
+            android:textColor="@color/colorAccent" />
 
-            <Button
-                android:id="@+id/fd_bt_fileStatus"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="PAUSE" />
-
-            <Button
-                android:id="@+id/fd_bt_fileDelete"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="DELETE" />
-        </LinearLayout>
     </LinearLayout>
 
-    <GridLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:alignmentMode="alignMargins"
-        android:columnCount="2"
-        android:columnWidth="100dp"
-        android:gravity="center"
-        android:numColumns="auto_fit"
-        android:padding="20dp"
-        android:stretchMode="columnWidth">
-
-        <TextView
-            android:id="@+id/fd_tv_fileSize"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:padding="10dp"
-            android:text="Size: 5.0 MB/ 10.0MB"
-            tools:layout_editor_absoluteX="0dp"
-            tools:layout_editor_absoluteY="0dp" />
-
-        <TextView
-            android:id="@+id/fd_tv_fileSpeed"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:padding="10dp"
-            android:text="Speed: 900 KB/s"
-            tools:layout_editor_absoluteX="0dp"
-            tools:layout_editor_absoluteY="0dp" />
-
-        <TextView
-            android:id="@+id/fd_tv_fileId"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:padding="10dp"
-            android:text="ID: 100022154215"
-            tools:layout_editor_absoluteX="0dp"
-            tools:layout_editor_absoluteY="0dp" />
-
-        <TextView
-            android:id="@+id/fd_tv_fileDate"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:padding="10dp"
-            android:text="Start Time: 7:00 pm"
-            tools:layout_editor_absoluteX="0dp"
-            tools:layout_editor_absoluteY="0dp" />
-
-        <TextView
-            android:id="@+id/fd_tv_fileETA"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:padding="10dp"
-            android:text="ETA: 1min"
-            tools:layout_editor_absoluteX="0dp"
-            tools:layout_editor_absoluteY="0dp" />
-    </GridLayout>
-</LinearLayout>
+</android.support.constraint.ConstraintLayout>

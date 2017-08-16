@@ -12,6 +12,7 @@
     <application
         android:name=".SMDM"
         android:allowBackup="true"
+
         android:configChanges="orientation|keyboardHidden|screenLayout|screenSize"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
@@ -27,7 +28,18 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/provider_paths" />
         </provider>
-        <activity android:name=".ui.DownloadFile">
+
+        <activity
+            android:name=".ui.MainActivity"
+            android:configChanges="orientation|keyboardHidden|screenLayout|screenSize"
+            android:label="@string/app_name"
+            android:screenOrientation="portrait"
+            android:theme="@style/AppTheme.NoActionBar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
 
@@ -345,21 +357,11 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".ui.MainActivity"
-            android:configChanges="orientation|keyboardHidden|screenLayout|screenSize"
-            android:label="@string/app_name"
-            android:theme="@style/AppTheme.NoActionBar">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
-        <activity
             android:name=".ui.Settings"
             android:configChanges="orientation|keyboardHidden|screenLayout|screenSize"
             android:label="@string/title_activity_settings"
             android:parentActivityName=".ui.MainActivity"
+            android:screenOrientation="portrait"
             android:theme="@style/AppTheme">
 
             <!-- Parent activity meta-data to support 4.0 and lower -->
@@ -367,7 +369,6 @@
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value=".ui.MainActivity" />
         </activity>
-        <activity android:name=".ui.FileInfoActivity"></activity>
     </application>
 
 </manifest>

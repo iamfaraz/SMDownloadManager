@@ -10,7 +10,6 @@ import android.graphics.Color;
 import android.graphics.drawable.Drawable;
 import android.util.TypedValue;
 import android.view.View;
-import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
@@ -204,35 +203,37 @@ public class FileItem extends AbstractFlexibleItem<FileItem.ItemHolder> {
                                List payloads) {
 
         viewHolder.fileId_int = getFileId();
-        viewHolder.playButton_ib.setTag(position);
         viewHolder.fileName_txt.setText(getFileName());
         viewHolder.fileProgress_pb.setProgress(getFileProgress());
         viewHolder.fileSize_txt.setText(getFileSize());
-
-        if (viewHolder.fileProgress_pb.getProgress() == 100) {
-            viewHolder.playButton_ib.setBackgroundResource(R.drawable.complete_btn);
-            viewHolder.playButton_ib.setImageResource(R.drawable.complete_btn);
-        }
         viewHolder.filePerecnt_txt.setText(viewHolder.fileProgress_pb.getProgress() + "%");
         viewHolder.fileETA_txt.setText(getFileETA());
 
         if (getFileStatus() == FileDownloadStatus.completed) {
             viewHolder.fileStatus_txt.setText("Downloaded");
         } else if (getFileStatus() == FileDownloadStatus.pending) {
+            viewHolder.fileProgress_pb.setIndeterminate(true);
             viewHolder.fileStatus_txt.setText("Pending");
         } else if (getFileStatus() == FileDownloadStatus.error) {
+            viewHolder.fileProgress_pb.setIndeterminate(false);
             viewHolder.fileStatus_txt.setText("Error");
         } else if (getFileStatus() == FileDownloadStatus.blockComplete) {
+            viewHolder.fileProgress_pb.setIndeterminate(false);
             viewHolder.fileStatus_txt.setText("Block Completed");
         } else if (getFileStatus() == FileDownloadStatus.connected) {
+            viewHolder.fileProgress_pb.setIndeterminate(true);
             viewHolder.fileStatus_txt.setText("Connected");
         } else if (getFileStatus() == FileDownloadStatus.paused) {
+            viewHolder.fileProgress_pb.setIndeterminate(false);
             viewHolder.fileStatus_txt.setText("Paused");
         } else if (getFileStatus() == FileDownloadStatus.progress) {
+            viewHolder.fileProgress_pb.setIndeterminate(false);
             viewHolder.fileStatus_txt.setText("Downloading");
         } else if (getFileStatus() == FileDownloadStatus.started) {
+            viewHolder.fileProgress_pb.setIndeterminate(true);
             viewHolder.fileStatus_txt.setText("Started");
         } else if (getFileStatus() == FileDownloadStatus.retry) {
+            viewHolder.fileProgress_pb.setIndeterminate(true);
             viewHolder.fileStatus_txt.setText("Retrying");
         }
         viewHolder.fileSpeed_txt.setText(getFileSpeed());
@@ -240,25 +241,6 @@ public class FileItem extends AbstractFlexibleItem<FileItem.ItemHolder> {
         viewHolder.selectedOverlay.setAlpha(0.2f);
         viewHolder.selectedOverlay.setVisibility(View.VISIBLE);
         final Context context = viewHolder.itemView.getContext();
-
-        viewHolder.playButton_ib.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-
-                /*if (viewHolder.fileStatus_txt.getText().toString().equals("Downloading")) {
-                    FileDownloader.getImpl().pause((int) getFileId());
-                    viewHolder.playButton_ib.setBackgroundResource(R.drawable.play_btn);
-                    viewHolder.playButton_ib.setImageResource(R.drawable.play_btn);
-                    Toast.makeText(context, fileModel.getFileUrl() + fileModel.getFilePath(), Toast.LENGTH_LONG).show();
-
-                } else {
-                    FileDownloader.getImpl().create(fileModel.getFileUrl()).setPath(fileModel.getFilePath(), true).setListener(getFileDownloadListener()).start();
-                    viewHolder.playButton_ib.setBackgroundResource(R.drawable.pause_btn);
-                    viewHolder.playButton_ib.setImageResource(R.drawable.pause_btn);
-                    Toast.makeText(context, fileModel.getFileUrl() + fileModel.getFilePath(), Toast.LENGTH_LONG).show();
-                }*/
-            }
-        });
 
         Drawable drawable = DrawableUtils.getSelectableBackgroundCompat(
                 Color.TRANSPARENT,                // normal background
@@ -279,7 +261,6 @@ public class FileItem extends AbstractFlexibleItem<FileItem.ItemHolder> {
 
         Context context;
         long fileId_int;
-        ImageButton playButton_ib;
         TextView fileName_txt;
         ProgressBar fileProgress_pb;
         TextView fileStatus_txt;
@@ -294,7 +275,6 @@ public class FileItem extends AbstractFlexibleItem<FileItem.ItemHolder> {
         public ItemHolder(View view, FlexibleAdapter adapter) {
             super(view, adapter);
             fileId_int = -1;
-            playButton_ib = view.findViewById(R.id.playBtn);
             fileName_txt = view.findViewById(R.id.fileName);
             fileProgress_pb = view.findViewById(R.id.fileProgressBar);
             fileSize_txt = view.findViewById(R.id.fileSize);
@@ -319,10 +299,6 @@ public class FileItem extends AbstractFlexibleItem<FileItem.ItemHolder> {
             a.recycle();
 
             return color;
-        }
-
-        public ImageButton getPlayButton_ib() {
-            return playButton_ib;
         }
     }
 }

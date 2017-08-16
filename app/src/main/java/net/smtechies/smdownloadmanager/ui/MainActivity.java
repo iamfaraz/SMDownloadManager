@@ -1,12 +1,11 @@
 package net.smtechies.smdownloadmanager.ui;
 
 import android.Manifest;
-import android.app.AlertDialog;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.app.ProgressDialog;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
@@ -21,6 +20,8 @@ import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.provider.MediaStore;
+import android.support.design.widget.BottomSheetDialog;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.NavigationView;
 import android.support.v4.app.NotificationCompat;
@@ -44,7 +45,6 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.ImageButton;
-import android.widget.ProgressBar;
 import android.widget.RemoteViews;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -63,15 +63,13 @@ import net.smtechies.smdownloadmanager.utils.Rows;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
+import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import eu.davidea.flexibleadapter.FlexibleAdapter;
 import eu.davidea.flexibleadapter.SelectableAdapter.Mode;
@@ -80,63 +78,45 @@ public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener, View.OnClickListener {
 
 
-    private final String DEFAULT_PATH = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getAbsolutePath();
+    private final String PATH = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getAbsolutePath();
     private final int PERMISSIONS_WRITE_EXTERNAL_STORAGE = 101;
-
+    FileDownloadListener fdl;
     private EditText etUrl;
     private CheckBox cb_forceDownload;
-
+    private Button cd_Cancel, cd_Down;
     private LayoutInflater layoutInflater;
     private View fileDialogView;
 
-    private TextView fd_FileName, fd_FileStatus, fd_FileUrl,
-            fd_FilePath, fd_FileSize, fd_FileSpeed, fd_FileId,
-            fd_FileDate, fd_FileETA;
-    private Button fd_FileStatusBTN, fd_FileDeleteBTN;
-    private ProgressBar fd_FileProgressBar;
+    private TextView fd_FileName, fd_FilePath, fd_FileDate;
+    private Button cfid_FileOpenBTN, cfid_FileDeleteBTN, cfid_HideBTN;
 
     private NavigationView navigationView;
-
     private ImageButton ib_Play;
-
-    private String url_down = "http://files.funmaza.info/download/2ed3ab958afb3f78f9bac1fa3708ffeb";
-    //            "http://videos.funmaza.info/storage/0517/Vitamin%20D%201080p%20-%20Ludacris%20feat.%20Ty%20Dolla%20Sign%20FunmazaHD.mp4";
+    private String url_down =
+            //"http://files.funmaza.info/download/2ed3ab958afb3f78f9bac1fa3708ffeb";
+            "http://videos.funmaza.info/storage/0517/Vitamin%20D%201080p%20-%20Ludacris%20feat.%20Ty%20Dolla%20Sign%20FunmazaHD.mp4";
     private String[] fileContent;
-
     private String fileName;
     private int fileId = 0;
-
     private Context context;
-    private FileDownloadListener fdl;
-
     private FileDatabase fileDatabase;
     private SQLiteDatabase db;
     private FileDatabaseUtils fdu;
-
     private NotificationManager mNotificationManager;
     private NotificationCompat.Builder notificationBuilder;
-
     private ActionModeCallback actionModeCallback = new ActionModeCallback();
     private ActionMode actionMode;
-
     private ArrayList<FileItem> fi_ALL;
     private ArrayList<FileItem> fi_DOWN;
     private ArrayList<FileItem> fi_COMP;
-
-
     private ArrayList<BaseDownloadTask> runningTask;
-
     private ArrayList<FileItem> currentList;
-
     private RecyclerView rc_list;
-
     private LinearLayoutManager layoutManager;
     private FlexibleAdapter<FileItem> adapter;
-
     private FlexibleAdapter.OnItemClickListener onItemClickListener;
     private FlexibleAdapter.OnItemLongClickListener onItemLongClickListener;
-
-    private int lastScreen = 0, currentScreen = 0;
+    private int currentScreen = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -144,6 +124,7 @@ public class MainActivity extends AppCompatActivity
         setContentView(R.layout.activity_main);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+
         RequestPremissions();
         context = this;
 
@@ -181,37 +162,8 @@ public class MainActivity extends AppCompatActivity
 
         navigationView.setNavigationItemSelectedListener(this);
         navigationView.getMenu().getItem(0).setChecked(true);
-    }
 
-    private void itemOnClick(FileItem fileItem) {
-
-        Intent in = new Intent(this, FileInfoActivity.class);
-
-        in.putExtra(Rows.fileId, fileItem.getFileId());
-        in.putExtra(Rows.fileName, fileItem.getFileName());
-        in.putExtra(Rows.fileProgress, fileItem.getFileProgress());
-        in.putExtra(Rows.fileStatus, fileItem.getFileStatus());
-        in.putExtra("fileETA", fileItem.getFileETA());
-        in.putExtra(Rows.fileSize, fileItem.getFileSize());
-        in.putExtra("fileSpeed", fileItem.getFileSpeed());
-        in.putExtra(Rows.fileDate, fileItem.getFileDate());
-        in.putExtra(Rows.fileUrl, fileItem.getFileUrl());
-        in.putExtra(Rows.filePath, fileItem.getFilePath());
-        in.putExtra(Rows.fileDName, fileItem.getFileDName());
-
-        startActivity(in);
-        if (!FileExists(fileItem.getFilePath() + "/" + fileItem.getFileName())) {
-            Snacked("File Not Found\nRe-Download It", 1);
-        } else {
-            Snacked(fileItem.getFileName() + " exists", 1);
-                /*
-                if (fm.getFileStatus().equals("Paused") || fm.getFileStatus().equals("Error")) {
-                    //starterDownload(dataModel.getFileUrl(), dataModel.getFilePath()+"/"+dataModel.getFileName(), false, false, true);
-                } else if (fm.getFileStatus().equals("Downloading")) {
-                    FileDownloader.getImpl().pause(fm.getFileId());
-                    Snacked(fm.getFileName() + "\nPaused", 0);
-                }*/
-        }
+        Intenter(getIntent());
     }
 
     private void RequestPremissions() {
@@ -224,10 +176,6 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
-    private void GetName(String url) {
-        GetNameFromUrl fromUrl = new GetNameFromUrl();
-        fromUrl.execute(url);
-    }
 
     @Override
     public void onRequestPermissionsResult(int requestCode,
@@ -264,24 +212,6 @@ public class MainActivity extends AppCompatActivity
 
 
         layoutInflater = LayoutInflater.from(context);
-        fileDialogView = layoutInflater.inflate(R.layout.custom_file_info_dialog, null);
-
-        fd_FileName = fileDialogView.findViewById(R.id.fd_tv_fileName);
-        fd_FileStatus = fileDialogView.findViewById(R.id.fd_tv_fileStatus);
-        fd_FileUrl = fileDialogView.findViewById(R.id.fd_tv_fileUrl);
-        fd_FilePath = fileDialogView.findViewById(R.id.fd_tv_filePath);
-        fd_FileSize = fileDialogView.findViewById(R.id.fd_tv_fileSize);
-        fd_FileSpeed = fileDialogView.findViewById(R.id.fd_tv_fileSpeed);
-        fd_FileId = fileDialogView.findViewById(R.id.fd_tv_fileId);
-        fd_FileDate = fileDialogView.findViewById(R.id.fd_tv_fileDate);
-        fd_FileETA = fileDialogView.findViewById(R.id.fd_tv_fileETA);
-
-        fd_FileDeleteBTN = fileDialogView.findViewById(R.id.fd_bt_fileDelete);
-
-        fd_FileProgressBar = fileDialogView.findViewById(R.id.fd_pb_fileProgress);
-
-        fd_FileStatusBTN = fileDialogView.findViewById(R.id.fd_bt_fileStatus);
-
 
         onItemClickListener = new FlexibleAdapter.OnItemClickListener() {
             @Override
@@ -292,7 +222,26 @@ public class MainActivity extends AppCompatActivity
                     return true;
                 } else {
                     FileItem fi = adapter.getItem(position);
-                    ShowFileInfoDialog(fi);
+                    if (fi.getFileStatus() == FileDownloadStatus.completed || fi.getFileStatus() == FileDownloadStatus.blockComplete) {
+                        ShowFileInfoDialog(fi);
+                    } else if (fi.getFileStatus() == FileDownloadStatus.paused || fi.getFileStatus() == FileDownloadStatus.error) {
+                        Snacked("Resuming " + fi.getFileName(), 0);
+                        FileDownloader.getImpl()
+                                .create(fi.getFileUrl())
+                                .setForceReDownload(false)
+                                .setPath(fi.getFilePath() + File.separator + fi.getFileName())
+                                .setListener(fdl)
+                                .start();
+                        //ToggleDownload(fi.getFileUrl(), fi.getFilePath(), fi.getFileName(), false, true);
+                    } else if (fi.getFileStatus() == FileDownloadStatus.pending ||
+                            fi.getFileStatus() == FileDownloadStatus.started ||
+                            fi.getFileStatus() == FileDownloadStatus.connected ||
+                            fi.getFileStatus() == FileDownloadStatus.progress ||
+                            fi.getFileStatus() == FileDownloadStatus.retry) {
+                        Snacked(fi.getFileName() + " Paused", 0);
+                        FileDownloader.getImpl().pause((int) fi.getFileId());
+
+                    }
                     //Snacked(fi.getFileName(), 0);
                     return false;
                 }
@@ -320,23 +269,22 @@ public class MainActivity extends AppCompatActivity
                         new FileItem(task.getId(), TextUtils.isEmpty(fileName) ? task.getFilename() : fileName,
                                 currentProgress(soFarBytes, totalBytes), task.getStatus(), "ETA",
                                 size(soFarBytes) + "/" + size(totalBytes), "Speed", getDateTime(System.currentTimeMillis()),
-                                task.getUrl(), task.getPath(), task.getFilename()), true);
+                                task.getUrl(), task.getPath(), task.getFilename()), false);
 
 
                 fi.setFileName(TextUtils.isEmpty(fileName) ? task.getFilename() : fileName);
-                fi.setFileProgress(currentProgress(soFarBytes, totalBytes));
                 fi.setFileStatus(task.getStatus());
                 fi.setFileDate(getDateTime(System.currentTimeMillis()));
                 fi.setFileSize(size(soFarBytes) + "/" + size(totalBytes));
                 fi.setFileDName(task.getFilename());
                 fi.setFileSpeed("-");
                 fi.setFileUrl(task.getUrl());
-                fi.setFilePath(task.getPath());
+                String path = task.getPath().substring(0, task.getPath().lastIndexOf("/"));
+                fi.setFilePath(path);
 
 
                 UpdateCurrentList();
 
-                UpdateFileInfoDialog(fi);
 
                 String[] columns = {Rows.fileName, Rows.fileStatus, Rows.fileUrl, Rows.filePath, Rows.fileDName};
                 String[] columnVals = {fi.getFileName(), "" + fi.getFileStatus(), fi.getFileUrl(), fi.getFilePath(), task.getFilename()};
@@ -357,7 +305,6 @@ public class MainActivity extends AppCompatActivity
                 fi.setFileName(TextUtils.isEmpty(fileName) ? task.getFilename() : fileName);
                 fi.setFileStatus(task.getStatus());
                 fi.setFileSpeed("-");
-                UpdateFileInfoDialog(fi);
 
                 String[] columns = {Rows.fileName, Rows.fileStatus, Rows.fileUrl, Rows.filePath};
                 String[] columnVals = {fi.getFileName(), "" + fi.getFileStatus(), fi.getFileUrl(), fi.getFilePath()};
@@ -376,11 +323,9 @@ public class MainActivity extends AppCompatActivity
                                 task.getUrl(), task.getPath(), task.getFilename()), false);
 
                 fi.setFileName(TextUtils.isEmpty(fileName) ? task.getFilename() : fileName);
-                fi.setFileProgress(currentProgress(soFarBytes, totalBytes));
                 fi.setFileStatus(task.getStatus());
                 fi.setFileSpeed("-");
                 fi.setFileSize(size(soFarBytes) + "/" + size(totalBytes));
-                UpdateFileInfoDialog(fi);
 
 
                 String[] columns = {Rows.fileName, Rows.fileStatus, Rows.fileSize};
@@ -405,7 +350,6 @@ public class MainActivity extends AppCompatActivity
                 fi.setFileStatus(task.getStatus());
                 fi.setFileSize(size(soFarBytes) + "/" + size(totalBytes));
                 fi.setFileSpeed(speed(task.getSpeed()));
-                UpdateFileInfoDialog(fi);
 
                 UpdateCurrentList();
 
@@ -431,7 +375,6 @@ public class MainActivity extends AppCompatActivity
                 fi.setFileDate(getDateTime(System.currentTimeMillis()));
                 fi.setFileSize(size(soFarBytes) + "/" + "---");
                 fi.setFileSpeed("-");
-                UpdateFileInfoDialog(fi);
 
                 UpdateCurrentList();
             }
@@ -450,25 +393,19 @@ public class MainActivity extends AppCompatActivity
                 fi.setFileDate(getDateTime(System.currentTimeMillis()));
                 fi.setFileSize(size(task.getSmallFileTotalBytes()));
                 fi.setFileSpeed("-");
-                UpdateFileInfoDialog(fi);
 
                 fi_DOWN.remove(fi);
                 fi_COMP.add(fi);
 
-                File from = new File(task.getPath(), task.getFilename());
-                File to = new File(task.getPath(), fileName);
-
-                if (FileExists(from.getAbsolutePath()) && !from.getName().equals(to.getName()))
-                    from.renameTo(to);
-
                 UpdateCurrentList();
 
-                String[] columns = {Rows.fileName, Rows.fileProgress, Rows.fileStatus, Rows.fileSize};
-                String[] columnVals = {fi.getFileName(), 100 + "", "" + task.getStatus(), fi.getFileSize()};
+                String[] columns = {Rows.fileName, Rows.fileProgress, Rows.fileStatus, Rows.fileSize, Rows.fileDate};
+                String[] columnVals = {fi.getFileName(), 100 + "", "" + task.getStatus(), fi.getFileSize(), fi.getFileDate()};
 
                 String whereColumn = Rows.fileId;
                 String[] whereArgs = {fi.getFileId() + ""};
                 fdu.UpdateFileinDatabase(columns, columnVals, whereColumn, whereArgs);
+                ShowFileInfoDialog(fi);
 
             }
 
@@ -489,7 +426,6 @@ public class MainActivity extends AppCompatActivity
                 fi.setFileName(TextUtils.isEmpty(fileName) ? task.getFilename() : fileName);
                 fi.setFileSpeed("-");
                 fi.setFileStatus(task.getStatus());
-                UpdateFileInfoDialog(fi);
 
                 UpdateCurrentList();
 
@@ -518,7 +454,6 @@ public class MainActivity extends AppCompatActivity
                 fi.setFileName(TextUtils.isEmpty(fileName) ? task.getFilename() : fileName);
                 fi.setFileStatus(task.getStatus());
                 fi.setFileSpeed("-");
-                UpdateFileInfoDialog(fi);
 
                 UpdateCurrentList();
 
@@ -540,36 +475,35 @@ public class MainActivity extends AppCompatActivity
         };
     }
 
-    private void UpdateFileInfoDialog(FileItem fi) {
-        fd_FileName.setText(fi.getFileName());
-        if (fi.getFileStatus() == FileDownloadStatus.completed) {
-            fd_FileStatus.setText("Downloaded");
-        } else if (fi.getFileStatus() == FileDownloadStatus.pending) {
-            fd_FileStatus.setText("Pending");
-        } else if (fi.getFileStatus() == FileDownloadStatus.error) {
-            fd_FileStatus.setText("Error");
-        } else if (fi.getFileStatus() == FileDownloadStatus.blockComplete) {
-            fd_FileStatus.setText("Block Completed");
-        } else if (fi.getFileStatus() == FileDownloadStatus.connected) {
-            fd_FileStatus.setText("Connected");
-        } else if (fi.getFileStatus() == FileDownloadStatus.paused) {
-            fd_FileStatus.setText("Paused");
-        } else if (fi.getFileStatus() == FileDownloadStatus.progress) {
-            fd_FileStatus.setText("Downloading");
-        } else if (fi.getFileStatus() == FileDownloadStatus.started) {
-            fd_FileStatus.setText("Started");
-        } else if (fi.getFileStatus() == FileDownloadStatus.retry) {
-            fd_FileStatus.setText("Retrying");
+    private void Intenter(Intent in) {
+        if (in == null || in.getData() == null) {
+            return;
         }
-        fd_FileUrl.setText("Url: " + fi.getFileUrl());
-        fd_FilePath.setText("Path: " + fi.getFilePath());
-        fd_FileSize.setText("Size: " + fi.getFileSize());
-        fd_FileSpeed.setText("Speed: " + fi.getFileSpeed());
-        fd_FileId.setText("ID: " + fi.getFileId());
-        fd_FileDate.setText("Date: " + fi.getFileDate());
-        fd_FileETA.setText("ETA: -");
 
-        fd_FileProgressBar.setProgress(fi.getFileProgress());
+        Uri data = in.getData();
+
+        if (data != null) {
+            String dataString = "";
+            if (data.getScheme().equals("http") || data.getScheme().equals("https")) {
+                String url = data.getScheme() + "://" + data.getHost() + data.getPath();
+                showDownloadDialog(url);
+            }
+        }
+    }
+
+    public String getRealPathFromURI(Context context, Uri contentUri) {
+        Cursor cursor = null;
+        try {
+            String[] proj = {MediaStore.Images.Media.DATA};
+            cursor = context.getContentResolver().query(contentUri, proj, null, null, null);
+            int column_index = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
+            cursor.moveToFirst();
+            return cursor.getString(column_index);
+        } finally {
+            if (cursor != null) {
+                cursor.close();
+            }
+        }
     }
 
     private void toggleSelection(int position) {
@@ -654,7 +588,7 @@ public class MainActivity extends AppCompatActivity
             }
             if (maplist.size() != 0) {
                 for (int i = 0; i < maplist.size(); i++) {
-                    FileItem fm = new FileItem(Integer.parseInt(maplist.get(i).get(Rows.fileId)),
+                    FileItem fi = new FileItem(Integer.parseInt(maplist.get(i).get(Rows.fileId)),
                             maplist.get(i).get(Rows.fileName),
                             Integer.parseInt(maplist.get(i).get(Rows.fileProgress)), Byte.parseByte(maplist.get(i).get(Rows.fileStatus)), "-",
                             maplist.get(i).get(Rows.fileSize),
@@ -663,17 +597,23 @@ public class MainActivity extends AppCompatActivity
                             maplist.get(i).get(Rows.filePath),
                             maplist.get(i).get(Rows.fileDName));
 
-                    if (fm.getFileStatus() == FileDownloadStatus.completed) {
-                        fi_COMP.add(fm);
+                    if (fi.getFileStatus() == FileDownloadStatus.completed) {
+                        fi_COMP.add(fi);
                     } else {
-                        fi_DOWN.add(fm);
+                        if (fi.getFileStatus() != FileDownloadStatus.error &&
+                                fi.getFileStatus() != FileDownloadStatus.paused &&
+                                fi.getFileStatus() != FileDownloadStatus.completed &&
+                                fi.getFileStatus() != FileDownloadStatus.blockComplete) {
+                            fi.setFileStatus(FileDownloadStatus.paused);
+                        }
+                        fi_DOWN.add(fi);
                     }
-                    fi_ALL.add(fm);
+                    fi_ALL.add(fi);
                 }
             }
         } catch (Exception e) {
             e.printStackTrace();
-            Snacked("GETNAMEFROMDB():\n" + e.getLocalizedMessage(), 0);
+            Snacked("ListFromDatabase():\n" + e.getLocalizedMessage(), 0);
         }
     }
 
@@ -739,118 +679,172 @@ public class MainActivity extends AppCompatActivity
         LayoutInflater layoutInflaterAndroid = LayoutInflater.from(context);
         View mView = layoutInflaterAndroid.inflate(R.layout.custom_dialog, null);
 
-        final AlertDialog.Builder alert = new AlertDialog.Builder(context);
+        final BottomSheetDialog dialog = new BottomSheetDialog(MainActivity.this);
+        dialog.setContentView(mView);
 
         etUrl = mView.findViewById(R.id.etUrl);
         etUrl.setMaxLines(5);
-
+        cd_Cancel = mView.findViewById(R.id.cd_cancel_btn);
+        cd_Down = mView.findViewById(R.id.cd_down_btn);
         cb_forceDownload = mView.findViewById(R.id.cb_forceDownload);
 
+        cd_Cancel.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                dialog.dismiss();
+            }
+        });
+
+        cd_Down.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                boolean forceDownload = cb_forceDownload.isChecked();
+                new GetNameFromUrl().execute(etUrl.getText().toString(), forceDownload + "");
+                dialog.dismiss();
+            }
+        });
+
         etUrl.setText(url_down);
-        //alert.setIcon(); TODO add icon
+
         etUrl.setHint("Enter Download Link");
-        alert.setTitle("Download File");
-        alert.setView(mView);
+        dialog.show();
 
+    }
 
-        alert.setPositiveButton("Download", new DialogInterface.OnClickListener() {
-            public void onClick(DialogInterface dialog, int whichButton) {
-                boolean force_download = cb_forceDownload.isChecked();
-                ToggleDownload(etUrl.getText().toString(), DEFAULT_PATH, cb_forceDownload.isChecked(), false);
+    public void showDownloadDialog(String url) {
+        LayoutInflater layoutInflaterAndroid = LayoutInflater.from(context);
+        View mView = layoutInflaterAndroid.inflate(R.layout.custom_dialog, null);
+
+        final BottomSheetDialog dialog = new BottomSheetDialog(MainActivity.this);
+        dialog.setContentView(mView);
+
+        etUrl = mView.findViewById(R.id.etUrl);
+        etUrl.setMaxLines(5);
+        cd_Cancel = mView.findViewById(R.id.cd_cancel_btn);
+        cd_Down = mView.findViewById(R.id.cd_down_btn);
+        cb_forceDownload = mView.findViewById(R.id.cb_forceDownload);
+
+        cd_Cancel.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                dialog.dismiss();
             }
         });
-        alert.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-            public void onClick(DialogInterface dialog, int whichButton) {
 
+        cd_Down.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                boolean forceDownload = cb_forceDownload.isChecked();
+                new GetNameFromUrl().execute(etUrl.getText().toString(), forceDownload + "");
+                dialog.dismiss();
             }
         });
 
-        alert.show();
+        etUrl.setText(url);
+
+        etUrl.setHint("Enter Download Link");
+        dialog.show();
+
     }
 
     public void ShowFileInfoDialog(final FileItem fi) {
         fileDialogView = layoutInflater.inflate(R.layout.custom_file_info_dialog, null, false);
 
-        fd_FileName = fileDialogView.findViewById(R.id.fd_tv_fileName);
-        fd_FileStatus = fileDialogView.findViewById(R.id.fd_tv_fileStatus);
-        fd_FileUrl = fileDialogView.findViewById(R.id.fd_tv_fileUrl);
-        fd_FilePath = fileDialogView.findViewById(R.id.fd_tv_filePath);
-        fd_FileSize = fileDialogView.findViewById(R.id.fd_tv_fileSize);
-        fd_FileSpeed = fileDialogView.findViewById(R.id.fd_tv_fileSpeed);
-        fd_FileId = fileDialogView.findViewById(R.id.fd_tv_fileId);
-        fd_FileDate = fileDialogView.findViewById(R.id.fd_tv_fileDate);
-        fd_FileETA = fileDialogView.findViewById(R.id.fd_tv_fileETA);
+        final BottomSheetDialog dialog = new BottomSheetDialog(MainActivity.this);
+        dialog.setContentView(fileDialogView);
 
-        fd_FileDeleteBTN = fileDialogView.findViewById(R.id.fd_bt_fileDelete);
+        fd_FileName = fileDialogView.findViewById(R.id.cfid_tv_fileName);
+        fd_FilePath = fileDialogView.findViewById(R.id.cfid_tv_Path);
+        fd_FileDate = fileDialogView.findViewById(R.id.cfid_tv_Date);
 
-        fd_FileProgressBar = fileDialogView.findViewById(R.id.fd_pb_fileProgress);
+        cfid_FileOpenBTN = fileDialogView.findViewById(R.id.cfid_btn_open);
+        cfid_FileDeleteBTN = fileDialogView.findViewById(R.id.cfid_btn_delete);
+        cfid_HideBTN = fileDialogView.findViewById(R.id.cfid_btn_hide);
 
-        fd_FileStatusBTN = fileDialogView.findViewById(R.id.fd_bt_fileStatus);
 
-        UpdateFileInfoDialog(fi);
-        if (fi.getFileStatus() == FileDownloadStatus.completed) {
-            fd_FileStatusBTN.setText("Open");
-        } else if (fi.getFileStatus() == FileDownloadStatus.pending ||
-                fi.getFileStatus() == FileDownloadStatus.retry ||
-                fi.getFileStatus() == FileDownloadStatus.connected ||
-                fi.getFileStatus() == FileDownloadStatus.started ||
-                fi.getFileStatus() == FileDownloadStatus.progress) {
-            fd_FileStatusBTN.setText("Pause");
-        } else if (fi.getFileStatus() == FileDownloadStatus.error || fi.getFileStatus() == FileDownloadStatus.paused) {
-            fd_FileStatusBTN.setText("Resume");
-        }
+        fd_FileName.setText(fi.getFileName());
+        fd_FileDate.setText(fi.getFileDate());
+        String path = fi.getFilePath().substring(0, fi.getFilePath().lastIndexOf("/"));
+        fd_FilePath.setText(path);
 
-        fd_FileStatusBTN.setOnClickListener(new View.OnClickListener() {
+        cfid_FileOpenBTN.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-
-                if (fi.getFileStatus() == FileDownloadStatus.completed) {
-
-                    //file is completed
-                    File file = new File(fi.getFilePath() + File.separator + fi.getFileName());
-                    Uri fileUri;
-                    if ((Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)) {
-                        fileUri = FileProvider.getUriForFile(context,
-                                context.getApplicationContext().getPackageName() + ".net.smtechies.smdownloadmanager.provider",
-                                file);
-                    } else {
-                        fileUri = Uri.fromFile(file);
-                    }
-
-                    //Snacked(fileUri.toString(), 0);
-                    Intent i = new Intent(Intent.ACTION_VIEW);
-                    i.setData(fileUri);
-                    i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                    startActivity(i);
-                } else if (fi.getFileStatus() == FileDownloadStatus.error || fi.getFileStatus() == FileDownloadStatus.paused) {
-                    //file is pause and let's start it
-                    FileDownloader.getImpl().create(fi.getFileUrl()).setPath(fi.getFilePath(), true).setListener(fdl).start();
-                    fd_FileStatusBTN.setText("Pause");
+                File file = new File(fi.getFilePath() + File.separator + fi.getFileName());
+                Uri fileUri;
+                if ((Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)) {
+                    fileUri = FileProvider.getUriForFile(context,
+                            context.getApplicationContext().getPackageName() + ".net.smtechies.smdownloadmanager.provider",
+                            file);
                 } else {
-                    //file is active
-                    FileDownloader.getImpl().pause((int) fi.getFileId());
-                    fd_FileStatusBTN.setText("Resume");
+                    fileUri = Uri.fromFile(file);
                 }
-            }
-        });
 
-
-        UpdateFileInfoDialog(fi);
-
-        final AlertDialog.Builder alert = new AlertDialog.Builder(context);
-
-        alert.setTitle(fi.getFileName());
-        alert.setView(fileDialogView);
-
-
-        alert.setPositiveButton("Hide", new DialogInterface.OnClickListener() {
-            public void onClick(DialogInterface dialog, int whichButton) {
-
+                //Snacked(fileUri.toString(), 0);
+                Intent i = new Intent(Intent.ACTION_VIEW);
+                i.setData(fileUri);
+                i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                dialog.dismiss();
+                startActivity(i);
 
             }
         });
 
-        alert.show();
+
+        cfid_FileDeleteBTN.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                File file = new File(fi.getFilePath() + File.separator + fi.getFileName());
+                if (file.exists()) {
+                    if (file.delete()) {
+                        fi_ALL.remove(fi);
+
+                        String whereColumn = Rows.fileId;
+                        String[] whereArgs = {String.valueOf(fi.getFileId())};
+
+                        fdu.DeleteFileFromDatabase(whereColumn, whereArgs);
+
+                        if (fi_DOWN.contains(fi))
+                            fi_DOWN.remove(fi);
+
+                        if (fi_COMP.contains(fi))
+                            fi_COMP.remove(fi);
+
+                        Snacked(fi.getFileName() + " Deleted", 0);
+                    } else {
+                        Snacked("Deletion failed!", 0);
+                    }
+                } else {
+                    Snacked(fi.getFileName() + " Not Found\n" +
+                            "Deleting from list", 0);
+
+                    fi_ALL.remove(fi);
+
+                    String whereColumn = Rows.fileId;
+                    String[] whereArgs = {String.valueOf(fi.getFileId())};
+
+                    fdu.DeleteFileFromDatabase(whereColumn, whereArgs);
+
+                    if (fi_DOWN.contains(fi))
+                        fi_DOWN.remove(fi);
+
+                    if (fi_COMP.contains(fi))
+                        fi_COMP.remove(fi);
+
+                    Snacked(fi.getFileName() + " removed from list", 0);
+                }
+                dialog.dismiss();
+            }
+        });
+
+        cfid_HideBTN.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                dialog.dismiss();
+            }
+        });
+
+        dialog.show();
     }
 
     public void otherNotification(int id) {
@@ -1030,46 +1024,74 @@ public class MainActivity extends AppCompatActivity
         return fm;
     }
 
-    public void ToggleDownload(String fileUrl, String filePath, boolean forceDownload, boolean resume) {
+    public void ToggleDownload(String fileUrl, String filePath, String fileName, boolean forceDownload, boolean resume) {
+        //Snacked(fileName + "\n\n" + fileUrl + "\n\n" + forceDownload + "", 1);
 
-        boolean fileExists = false;
-        int id = FileDownloadUtils.generateId(fileUrl, filePath);
+        String path = filePath + File.separator + fileName;
 
-        FileItem fm = GetFileModelById(id, true);
-        fm.setFileUrl(fileUrl);
-        fm.setFilePath(filePath);
-
+        int id = FileDownloadUtils.generateId(fileUrl, path);
         boolean fileInModel = hasIdInFileModel(fi_ALL, id);
-
-        byte status;
-        if (fileInModel) {
-            status = fm.getFileStatus();
-            if (status == FileDownloadStatus.completed || status == FileDownloadStatus.blockComplete) {
-                Snacked("File already downloaded", 0);
-                fileExists = FileExists(fm.getFilePath() + File.separator + fm.getFileName());
-                if (!forceDownload)
-                    return;
-            } else if (status == FileDownloadStatus.paused || status == FileDownloadStatus.error) {
-                fileExists = false;
-            }
-        }
-
+        Snacked(fileInModel + "", 0);
+        if (fileInModel)
+            return;
+        boolean fileExists = FileExists(path);
         if (forceDownload) {
-            GetName(fm.getFileUrl());
+            FileItem fi = GetFileModelById(id, true);
+            fi.setFileUrl(fileUrl);
+            fi.setFilePath(PATH);
+            fi.setFileName(fileName);
+
             fileId = FileDownloader.getImpl()
-                    .create(fm.getFileUrl())
+                    .create(fi.getFileUrl())
                     .setForceReDownload(forceDownload)
-                    .setPath(filePath, true)
+                    .setPath(path)
                     .setListener(fdl)
                     .start();
-        } else if (!fileExists) {
-            GetName(fileUrl);
-            fileId = FileDownloader.getImpl()
-                    .create(fileUrl)
-                    .setForceReDownload(false)
-                    .setPath(filePath, true)
-                    .setListener(fdl)
-                    .start();
+            return;
+        } else {
+            if (fileExists) {
+                Snacked(fileName + "\nalready downloaded!!!", 1);
+                return;
+            } else {
+                if (fileInModel) {
+                    FileItem fi = GetFileModelById(id, !fileInModel);
+                    byte status = fi.getFileStatus();
+                    if (status == FileDownloadStatus.completed || status == FileDownloadStatus.blockComplete) {
+                        Snacked("File already downloaded\n" +
+                                "To Re-Download, select Force_Download", 1);
+                        return;
+                    } else if (status == FileDownloadStatus.paused || status == FileDownloadStatus.error) {
+                        fileId = FileDownloader.getImpl()
+                                .create(fi.getFileUrl())
+                                .setForceReDownload(false)
+                                .setPath(fi.getFilePath() + File.separator + fi.getFileName())
+                                .setListener(fdl)
+                                .start();
+                        return;
+                    } else if (status == FileDownloadStatus.pending ||
+                            status == FileDownloadStatus.started ||
+                            status == FileDownloadStatus.connected ||
+                            status == FileDownloadStatus.progress ||
+                            status == FileDownloadStatus.retry) {
+                        FileDownloader.getImpl().pause(id);
+                        return;
+                    }
+                    return;
+                }
+
+                FileItem fi = GetFileModelById(id, true);
+                fi.setFileUrl(fileUrl);
+                fi.setFilePath(PATH);
+                fi.setFileName(fileName);
+
+                fileId = FileDownloader.getImpl()
+                        .create(fi.getFileUrl())
+                        .setForceReDownload(false)
+                        .setPath(path)
+                        .setListener(fdl)
+                        .start();
+
+            }
         }
     }
 
@@ -1194,32 +1216,32 @@ public class MainActivity extends AppCompatActivity
 
     public class GetNameFromUrl extends AsyncTask<String, Integer, String[]> {
 
+        private ProgressDialog pd;
+
+        @Override
+        protected void onPreExecute() {
+            pd = new ProgressDialog(context);
+            pd.setIcon(R.mipmap.ic_launcher);
+            pd.setMax(100);
+            pd.setMessage("Please wait.....");
+            pd.setTitle("Getting name....");
+            pd.show();
+        }
+
         @Override
         protected String[] doInBackground(String... params) {
 
             String filename = "";
+            publishProgress(0);
             try {
-                URL newUrl = new URL(params[0]);
-
-                if (!filename.equals("") || !filename.equals(null)) {
-                    URLConnection con = new URL(params[0]).openConnection();
-
-                    con.connect();
-
-                    InputStream is = con.getInputStream();
-                    newUrl = con.getURL();
-                    Log.d("Url", "" + newUrl);
-                    is.close();
-                    filename = GetName(newUrl);
-
-                }
-
-                if (filename.equals("") || filename.equals(null))
-                    filename = newUrl.getFile().substring(newUrl.getFile().lastIndexOf('/') + 1, newUrl.getFile().length());
+                filename = GettingName(params[0]);
 
                 filename = filename.replace("%20", " ");
+                publishProgress(80);
                 String fileExt = filename.substring(filename.lastIndexOf('.') + 1, filename.length());
-                String[] fileName = {"file", filename, fileExt};
+                publishProgress(90);
+                String[] fileName = {"file", filename, fileExt, params[0], params[1]};
+                publishProgress(100);
                 return fileName;
             } catch (MalformedURLException e) {
                 String[] error1 = {"Exception", "MalformedURLException", e.getMessage()};
@@ -1231,32 +1253,48 @@ public class MainActivity extends AppCompatActivity
 
         }
 
-        String GetName(URL url) throws IOException {
+        @Override
+        protected void onProgressUpdate(Integer... values) {
+            pd.setProgress(values[0]);
+        }
 
+        String GettingName(String url) throws IOException {
+            HttpURLConnection con = (HttpURLConnection) new URL(url).openConnection();
+            publishProgress(10);
+            int responseCode = con.getResponseCode();
+            String disposition = "";
+            String fileName = null;
+            publishProgress(20);
+            if (responseCode == HttpURLConnection.HTTP_OK) {
+                disposition = con.getHeaderField("Content-Disposition");
+                String contentType = con.getContentType();
+                int contentLength = con.getContentLength();
+                publishProgress(60);
+                if (disposition != null) {
+                    int index = disposition.indexOf("filename=");
+                    if (index > 0) {
 
-            String filename = "";
+                        fileName = disposition.substring(index + 10, disposition.length() - 1);
+                        publishProgress(70);
 
-            URLConnection con = url.openConnection();
-            Map map = con.getHeaderFields();
-            if (map.get("Content-Disposition") != null) {
-                String raw = map.get("Content-Disposition").toString();
-                // raw = "attachment; filename=abc.jpg"
-                if (raw != null && raw.indexOf("=") != -1) {
-                    filename = raw.split("=")[1]; // getting value after '='
-                    filename = filename.replaceAll("\"", "").replaceAll("]", "");
+                    }
+                } else {
+                    fileName = url.substring(url.lastIndexOf("/") + 1, url.length());
+                    publishProgress(70);
                 }
             }
-
-            return filename;
+            return fileName;
         }
 
         @Override
         protected void onPostExecute(String[] result) {
+            pd.dismiss();
 
             fileContent = result;
             String[] fileInfo = fileContent;
             if (fileInfo[0].equals("file")) {
                 fileName = fileInfo[1];
+                ToggleDownload(fileInfo[3], PATH, fileInfo[1], Boolean.parseBoolean(fileInfo[4]), false);
             } else {
 
             }
