@@ -37,7 +37,7 @@ public class FileInfoActivity extends AppCompatActivity {
         filePath = getIntent().getStringExtra(Rows.filePath);
         fileDName = getIntent().getStringExtra(Rows.fileDName);
 
-        fileItem = new FileItem(fileId, fileName, fileProgrss, fileStatus, "ETA", fileSize, "Speed", fileDate, fileUrl, filePath, fileDName, null);
+        fileItem = new FileItem(fileId, fileName, fileProgrss, fileStatus, "ETA", fileSize, "Speed", fileDate, fileUrl, filePath, fileDName);
 
 
     }

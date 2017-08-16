@@ -320,7 +320,7 @@ public class MainActivity extends AppCompatActivity
                         new FileItem(task.getId(), TextUtils.isEmpty(fileName) ? task.getFilename() : fileName,
                                 currentProgress(soFarBytes, totalBytes), task.getStatus(), "ETA",
                                 size(soFarBytes) + "/" + size(totalBytes), "Speed", getDateTime(System.currentTimeMillis()),
-                                task.getUrl(), task.getPath(), task.getFilename(), fdl), false);
+                                task.getUrl(), task.getPath(), task.getFilename()), true);
 
 
                 fi.setFileName(TextUtils.isEmpty(fileName) ? task.getFilename() : fileName);
@@ -352,7 +352,7 @@ public class MainActivity extends AppCompatActivity
                         new FileItem(task.getId(), TextUtils.isEmpty(fileName) ? task.getFilename() : fileName,
                                 0, task.getStatus(), "ETA",
                                 "---/---", "Speed", getDateTime(System.currentTimeMillis()),
-                                task.getUrl(), task.getPath(), task.getFilename(), fdl), false);
+                                task.getUrl(), task.getPath(), task.getFilename()), false);
 
                 fi.setFileName(TextUtils.isEmpty(fileName) ? task.getFilename() : fileName);
                 fi.setFileStatus(task.getStatus());
@@ -373,7 +373,7 @@ public class MainActivity extends AppCompatActivity
                         new FileItem(task.getId(), TextUtils.isEmpty(fileName) ? task.getFilename() : fileName,
                                 currentProgress(soFarBytes, totalBytes), task.getStatus(), "ETA",
                                 size(soFarBytes) + "/" + size(totalBytes), "Speed", getDateTime(System.currentTimeMillis()),
-                                task.getUrl(), task.getPath(), task.getFilename(), fdl), false);
+                                task.getUrl(), task.getPath(), task.getFilename()), false);
 
                 fi.setFileName(TextUtils.isEmpty(fileName) ? task.getFilename() : fileName);
                 fi.setFileProgress(currentProgress(soFarBytes, totalBytes));
@@ -398,7 +398,7 @@ public class MainActivity extends AppCompatActivity
                         new FileItem(task.getId(), TextUtils.isEmpty(fileName) ? task.getFilename() : fileName,
                                 currentProgress(soFarBytes, totalBytes), task.getStatus(), "ETA",
                                 size(soFarBytes) + "/" + size(totalBytes), "Speed", getDateTime(System.currentTimeMillis()),
-                                task.getUrl(), task.getPath(), task.getFilename(), fdl), false);
+                                task.getUrl(), task.getPath(), task.getFilename()), false);
 
                 fi.setFileName(TextUtils.isEmpty(fileName) ? task.getFilename() : fileName);
                 fi.setFileProgress(currentProgress(soFarBytes, totalBytes));
@@ -423,7 +423,7 @@ public class MainActivity extends AppCompatActivity
                         new FileItem(task.getId(), TextUtils.isEmpty(fileName) ? task.getFilename() : fileName,
                                 0, task.getStatus(), "ETA",
                                 size(soFarBytes) + "/" + "---", "Speed", getDateTime(System.currentTimeMillis()),
-                                task.getUrl(), task.getPath(), task.getFilename(), fdl), false);
+                                task.getUrl(), task.getPath(), task.getFilename()), false);
 
                 fi.setFileName(TextUtils.isEmpty(fileName) ? task.getFilename() : fileName);
 
@@ -442,7 +442,7 @@ public class MainActivity extends AppCompatActivity
                         new FileItem(task.getId(), TextUtils.isEmpty(fileName) ? task.getFilename() : fileName,
                                 100, task.getStatus(), "ETA",
                                 size(task.getSmallFileTotalBytes()), "Speed", getDateTime(System.currentTimeMillis()),
-                                task.getUrl(), task.getPath(), task.getFilename(), fdl), false);
+                                task.getUrl(), task.getPath(), task.getFilename()), false);
 
                 fi.setFileName(TextUtils.isEmpty(fileName) ? task.getFilename() : fileName);
                 fi.setFileProgress(100);
@@ -478,13 +478,13 @@ public class MainActivity extends AppCompatActivity
                         new FileItem(task.getId(), TextUtils.isEmpty(fileName) ? task.getFilename() : fileName,
                                 currentProgress(soFarBytes, totalBytes), task.getStatus(), "ETA",
                                 size(soFarBytes) + "/" + size(totalBytes), "Speed", getDateTime(System.currentTimeMillis()),
-                                task.getUrl(), task.getPath(), task.getFilename(), fdl), false);
+                                task.getUrl(), task.getPath(), task.getFilename()), false);
                 if (fi == null)
                     fi = GetFileModelByModel(
                             new FileItem(task.getId(), TextUtils.isEmpty(fileName) ? task.getFilename() : fileName,
                                     currentProgress(soFarBytes, totalBytes), task.getStatus(), "ETA",
                                     size(soFarBytes) + "/" + size(totalBytes), "Speed", getDateTime(System.currentTimeMillis()),
-                                    task.getUrl(), task.getPath(), task.getFilename(), fdl), true);
+                                    task.getUrl(), task.getPath(), task.getFilename()), true);
 
                 fi.setFileName(TextUtils.isEmpty(fileName) ? task.getFilename() : fileName);
                 fi.setFileSpeed("-");
@@ -507,13 +507,13 @@ public class MainActivity extends AppCompatActivity
                 FileItem fi = GetFileModelByModel(
                         new FileItem(task.getId(), TextUtils.isEmpty(fileName) ? task.getFilename() : fileName,
                                 0, task.getStatus(), "ETA", "Size", "Speed", getDateTime(System.currentTimeMillis()),
-                                task.getUrl(), task.getPath(), task.getFilename(), fdl), false);
+                                task.getUrl(), task.getPath(), task.getFilename()), false);
                 if (fi == null)
                     fi = GetFileModelByModel(
                             new FileItem(task.getId(), TextUtils.isEmpty(fileName) ? task.getFilename() : fileName,
                                     0, task.getStatus(), "ETA",
                                     "---/" + size(task.getSmallFileTotalBytes()), "Speed", getDateTime(System.currentTimeMillis()),
-                                    task.getUrl(), task.getPath(), task.getFilename(), fdl), true);
+                                    task.getUrl(), task.getPath(), task.getFilename()), true);
 
                 fi.setFileName(TextUtils.isEmpty(fileName) ? task.getFilename() : fileName);
                 fi.setFileStatus(task.getStatus());
@@ -661,7 +661,7 @@ public class MainActivity extends AppCompatActivity
                             "-", getDateTime(Long.parseLong(maplist.get(i).get(Rows.fileDate))),
                             maplist.get(i).get(Rows.fileUrl),
                             maplist.get(i).get(Rows.filePath),
-                            maplist.get(i).get(Rows.fileDName), fdl);
+                            maplist.get(i).get(Rows.fileDName));
 
                     if (fm.getFileStatus() == FileDownloadStatus.completed) {
                         fi_COMP.add(fm);
@@ -874,7 +874,6 @@ public class MainActivity extends AppCompatActivity
         notification.defaults |= Notification.DEFAULT_LIGHTS; // LED
         notification.defaults |= Notification.DEFAULT_VIBRATE; //Vibration
         notification.defaults |= Notification.DEFAULT_SOUND; // Sound
-
         mNotificationManager.notify(id, notification);
 */
 
@@ -1025,7 +1024,7 @@ public class MainActivity extends AppCompatActivity
         new InsertDataIntoDB(db).execute(insertData);
         FileItem fm = new FileItem(id, "", 0, FileDownloadStatus.pending, "",
                 "", "", getDateTime(System.currentTimeMillis()),
-                "", "", "", fdl);
+                "", "", "");
         fi_DOWN.add(fm);
         fi_ALL.add(fm);
         return fm;

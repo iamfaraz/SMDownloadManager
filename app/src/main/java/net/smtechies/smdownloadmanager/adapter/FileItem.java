@@ -14,7 +14,6 @@ import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
-import com.liulishuo.filedownloader.FileDownloadListener;
 import com.liulishuo.filedownloader.model.FileDownloadStatus;
 
 import net.smtechies.smdownloadmanager.R;
@@ -46,12 +45,10 @@ public class FileItem extends AbstractFlexibleItem<FileItem.ItemHolder> {
     private String filePath;
     private String fileDName;
 
-    private FileDownloadListener fileDownloadListener;
-
     public FileItem(long fileId, String fileName, int fileProgress,
                     byte fileStatus, String fileETA, String fileSize,
                     String fileSpeed, String fileDate, String fileUrl,
-                    String filePath, String fileDName, FileDownloadListener fileDownloadListener) {
+                    String filePath, String fileDName) {
         this.fileId = fileId;
         this.fileName = fileName;
         this.fileProgress = fileProgress;
@@ -64,7 +61,6 @@ public class FileItem extends AbstractFlexibleItem<FileItem.ItemHolder> {
         this.filePath = filePath;
         this.fileDName = fileDName;
         this.fileModel = this;
-        this.fileDownloadListener = fileDownloadListener;
     }
 
     public String getFileDName() {
@@ -154,15 +150,6 @@ public class FileItem extends AbstractFlexibleItem<FileItem.ItemHolder> {
     public void setFilePath(String filePath) {
         this.filePath = filePath;
     }
-
-    public FileDownloadListener getFileDownloadListener() {
-        return fileDownloadListener;
-    }
-
-    public void setFileDownloadListener(FileDownloadListener fileDownloadListener) {
-        this.fileDownloadListener = fileDownloadListener;
-    }
-
     /**
      * When an item is equals to another?
      * Write your own concept of equals, mandatory to implement or use
