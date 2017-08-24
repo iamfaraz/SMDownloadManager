@@ -1,22 +1,15 @@
 apply plugin: 'com.android.application'
 
 android {
-    signingConfigs {
-        release {
-            keyAlias 'faraz ahmad'
-            keyPassword 'ape762mary'
-            storeFile file('D:/Development/Unity/user.keystore')
-            storePassword 'ape762mary'
-        }
-    }
+
     compileSdkVersion 26
     buildToolsVersion '26.0.1'
     defaultConfig {
         applicationId "net.smtechies.smdownloadmanager"
         minSdkVersion 19
         targetSdkVersion 25
-        versionCode 1
-        versionName "0.1-alpha"
+        versionCode 3
+        versionName "v0.1"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
     }

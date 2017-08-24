@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="fill_parent"
     android:layout_height="wrap_content"
-    android:background="@android:color/white"
+    android:background="@color/colorGray"
     android:orientation="vertical">
 
     <EditText
@@ -22,31 +22,22 @@
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <CheckBox
-        android:id="@+id/cb_forceDownload"
-        android:layout_width="159dp"
-        android:layout_height="48dp"
-        android:layout_marginBottom="8dp"
-        android:layout_marginLeft="8dp"
-        android:layout_marginRight="8dp"
-        android:layout_marginTop="8dp"
-        android:text="Force Download"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toLeftOf="@+id/linearLayout"
-        app:layout_constraintTop_toBottomOf="@+id/etUrl"
-        app:layout_constraintVertical_bias="0.0" />
+
 
     <LinearLayout
         android:id="@+id/linearLayout"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginBottom="8dp"
+        android:layout_marginLeft="8dp"
         android:layout_marginRight="8dp"
         android:layout_marginTop="8dp"
         app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintHorizontal_bias="1.0"
+        app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/etUrl">
+        app:layout_constraintTop_toBottomOf="@+id/etUrl"
+        app:layout_constraintVertical_bias="0.0">
 
         <Button
             android:id="@+id/cd_cancel_btn"
@@ -62,7 +53,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:background="@android:color/transparent"
-            android:text="Download"
+            android:text="Get Info"
             android:textColor="@color/colorAccent" />
 
     </LinearLayout>

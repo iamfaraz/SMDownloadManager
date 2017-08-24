@@ -238,7 +238,7 @@ public class FileItem extends AbstractFlexibleItem<FileItem.ItemHolder> {
         }
         viewHolder.fileSpeed_txt.setText(getFileSpeed());
         viewHolder.fileDateTIme_txt.setText(getFileDate());
-        viewHolder.selectedOverlay.setAlpha(0.2f);
+        viewHolder.selectedOverlay.setAlpha(0.4f);
         viewHolder.selectedOverlay.setVisibility(View.VISIBLE);
         final Context context = viewHolder.itemView.getContext();
 
