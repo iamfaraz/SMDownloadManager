@@ -20,7 +20,7 @@ public class FileDatabaseUtils {
         this.db = db;
     }
 
-    public void InsertDataIntoTable(String fileId, String fileName,
+    public void InsertDataIntoTable(String tableName, String fileId, String fileName,
                                     String fileProgress, String fileSize, String fileStatus, String fileDate,
                                     String fileUrl, String filePath, String fileDName) {
 
@@ -39,17 +39,17 @@ public class FileDatabaseUtils {
 
         // Insert the new row, returning the primary key value of the new row
 //        long newRowId =
-        db.insert(Rows.TABLE_NAME, null, values);
+        db.insert(tableName, null, values);
     }
 
-    public Cursor getAllData() {
+    public Cursor getAllData(String tableName) {
 
-        Cursor cursor = db.rawQuery("select * from " + Rows.TABLE_NAME, null);
+        Cursor cursor = db.rawQuery("select * from " + tableName, null);
 
         return cursor;
     }
 
-    public Cursor getDatabyColumn(String column, String[] columnArgs, String[] columnsToShow) {
+    public Cursor getDatabyColumn(String tableName, String column, String[] columnArgs, String[] columnsToShow) {
 
         if (columnsToShow == null) {
             String[] proj = {
@@ -75,7 +75,7 @@ public class FileDatabaseUtils {
         String sortOrder = Rows.fileDate + " DESC";
 
         Cursor cursor = db.query(
-                Rows.TABLE_NAME,                     // The table to query
+                tableName,                     // The table to query
                 columnsToShow,                               // The columns to return
                 column,                                // The columns for the WHERE clause
                 columnArgs,                            // The values for the WHERE clause
@@ -90,18 +90,18 @@ public class FileDatabaseUtils {
     public void DeleteTable(String tableName) {
         db.delete(tableName, null, null);
         db.execSQL("vacuum");
-        Log.d("FDU: Delete Table", "deleted");
+        Log.d("FDU: Delete Table", tableName + " deleted");
     }
 
-    public void DeleteFileFromDatabase(String column, String[] columnArgs) {
+    public void DeleteFileFromDatabase(String tableName, String column, String[] columnArgs) {
         // Define 'where' part of query.
-        column = column + " LIKE ?";
+        String columner = column + " LIKE ?";
         // Issue SQL statement.
-        db.delete(Rows.TABLE_NAME, column, columnArgs);
-        Log.d("FDU: Delete Entry", "deleted");
+        db.delete(tableName, columner, columnArgs);
+        Log.d("FDU: Delete Entry", column + " deleted");
     }
 
-    public void UpdateFileinDatabase(String[] columnsToUpdate, String[] columnValues, String whereColumn, String[] whereArgs) {
+    public void UpdateFileinDatabase(String tableName, String[] columnsToUpdate, String[] columnValues, String whereColumn, String[] whereArgs) {
         if (columnsToUpdate.length != columnValues.length)
             return;
         ContentValues values = new ContentValues();
@@ -114,15 +114,17 @@ public class FileDatabaseUtils {
         whereColumn = whereColumn + " LIKE ?";
 
         int count = db.update(
-                Rows.TABLE_NAME,
+                tableName,
                 values,
                 whereColumn,
                 whereArgs);
+
+        Log.d("FDU: Delete Entry", tableName + " updated");
     }
 
-    public boolean IdInDB(int id) {
+    public boolean IdInTable(int id, String tableName) {
         try {
-            Cursor cursor = getAllData();
+            Cursor cursor = getAllData(tableName);
 
             ArrayList<HashMap<String, String>> maplist = new ArrayList<HashMap<String, String>>();
             // looping through all rows and adding to list
@@ -140,13 +142,16 @@ public class FileDatabaseUtils {
 
             for (int i = 0; i < maplist.size(); i++) {
                 if (maplist.get(i).get(Rows.fileId) == String.valueOf(id)) {
+                    Log.d("IdInTable", id + " in " + tableName + ": " + true);
                     return true;
                 }
             }
         } catch (Exception e) {
             e.printStackTrace();
-            Log.d("FDU: IdinDB Exception", e.getLocalizedMessage());
+            Log.d("IdinTable", e.getLocalizedMessage());
         }
+
+        Log.d("IdInTable", id + " in " + tableName + ": " + false);
         return false;
     }
 

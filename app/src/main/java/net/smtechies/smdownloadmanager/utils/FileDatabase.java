@@ -10,8 +10,8 @@ import android.database.sqlite.SQLiteOpenHelper;
 
 public class FileDatabase extends SQLiteOpenHelper {
 
-    private static final String SQL_CREATE_ENTRIES = "create table "
-            + Rows.TABLE_NAME + "( "
+    private static final String SQL_CREATE_FILES_TABLES = "create table "
+            + Rows.TABLE_FILES_NAME + "( "
             + Rows.rowId + " integer primary key autoincrement, "
             + Rows.fileId + " text not null, "
             + Rows.fileName + " text, "
@@ -24,9 +24,25 @@ public class FileDatabase extends SQLiteOpenHelper {
             + Rows.fileDName + " text"
             + ");";
 
-    private static final String SQL_DELETE_ENTRIES =
+    private static final String SQL_CREATE_YT_ENTRIES = "create table "
+            + Rows.TABLE_YT_NAME + "( "
+            + Rows.ytRowId + " integer primary key autoincrement, "
+            + Rows.ytFileId + " text not null, "
+            + Rows.ytFileName + " text, "
+            + Rows.ytFilePath + " text, "
+            + Rows.ytVideoLink + " text, "
+            + Rows.ytVideoStatus + " text, "
+            + Rows.ytAudioLink + " text, "
+            + Rows.ytAudioStatus + " text"
+            + ");";
+
+    private static final String SQL_DELETE_FILES_TABLE =
             "DROP TABLE IF EXISTS " +
-                    Rows.TABLE_NAME;
+                    Rows.TABLE_FILES_NAME;
+
+    private static final String SQL_DELETE_YT_TABLE =
+            "DROP TABLE IF EXISTS " +
+                    Rows.TABLE_YT_NAME;
 
     private static final String DATABASE_NAME = "FILESDATABASE.db";
     private static final int DATABASE_VERSION = 1;
@@ -37,14 +53,16 @@ public class FileDatabase extends SQLiteOpenHelper {
 
     @Override
     public void onCreate(SQLiteDatabase db) {
-        db.execSQL(SQL_CREATE_ENTRIES);
+        db.execSQL(SQL_CREATE_FILES_TABLES);
+        db.execSQL(SQL_CREATE_YT_ENTRIES);
     }
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
         // This database is only a cache for online data, so its upgrade policy is
         // to simply to discard the data and start over
-        db.execSQL(SQL_DELETE_ENTRIES);
+        db.execSQL(SQL_DELETE_FILES_TABLE);
+        db.execSQL(SQL_DELETE_YT_TABLE);
         onCreate(db);
     }
 

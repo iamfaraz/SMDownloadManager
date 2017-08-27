@@ -22,6 +22,7 @@ import android.text.TextUtils;
 import android.view.MenuItem;
 
 import net.smtechies.smdownloadmanager.R;
+import net.smtechies.smdownloadmanager.utils.AppCompatPreferenceActivity;
 
 import java.util.List;
 
@@ -89,6 +90,7 @@ public class Settings extends AppCompatPreferenceActivity {
             return true;
         }
     };
+
     ActionBar actionBar;
 
     /**
@@ -128,21 +130,11 @@ public class Settings extends AppCompatPreferenceActivity {
         actionBar.setDisplayHomeAsUpEnabled(true);
     }
 
-    /**
-     * Set up the {@link android.app.ActionBar}, if the API is available.
-     */
-
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public boolean onIsMultiPane() {
         return isXLargeTablet(this);
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     @TargetApi(Build.VERSION_CODES.HONEYCOMB)
     public void onBuildHeaders(List<Header> target) {

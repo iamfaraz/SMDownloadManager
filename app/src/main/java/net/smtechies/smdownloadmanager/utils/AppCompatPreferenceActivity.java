@@ -1,4 +1,4 @@
-package net.smtechies.smdownloadmanager.ui;
+package net.smtechies.smdownloadmanager.utils;
 
 import android.content.res.Configuration;
 import android.os.Bundle;
@@ -26,7 +26,6 @@ public abstract class AppCompatPreferenceActivity extends PreferenceActivity {
         getDelegate().onCreate(savedInstanceState);
         super.onCreate(savedInstanceState);
     }
-
 
     @Override
     protected void onPostCreate(Bundle savedInstanceState) {

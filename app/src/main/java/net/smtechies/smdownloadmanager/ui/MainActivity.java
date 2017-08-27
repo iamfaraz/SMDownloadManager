@@ -25,7 +25,6 @@ import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
-import android.provider.MediaStore;
 import android.support.design.widget.BottomSheetDialog;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.NavigationView;
@@ -49,7 +48,6 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
-import android.widget.ImageButton;
 import android.widget.ListView;
 import android.widget.RemoteViews;
 import android.widget.TextView;
@@ -60,7 +58,6 @@ import com.liulishuo.filedownloader.FileDownloadListener;
 import com.liulishuo.filedownloader.FileDownloadQueueSet;
 import com.liulishuo.filedownloader.FileDownloader;
 import com.liulishuo.filedownloader.model.FileDownloadStatus;
-import com.liulishuo.filedownloader.util.FileDownloadSerialQueue;
 import com.liulishuo.filedownloader.util.FileDownloadUtils;
 
 import net.smtechies.smdownloadmanager.R;
@@ -84,7 +81,8 @@ import eu.davidea.flexibleadapter.FlexibleAdapter;
 import eu.davidea.flexibleadapter.SelectableAdapter.Mode;
 
 public class MainActivity extends AppCompatActivity
-        implements NavigationView.OnNavigationItemSelectedListener, View.OnClickListener {
+        implements NavigationView.OnNavigationItemSelectedListener,
+        View.OnClickListener, FlexibleAdapter.OnItemClickListener, FlexibleAdapter.OnItemLongClickListener {
 
 
     private final String PATH = Environment.
@@ -102,14 +100,12 @@ public class MainActivity extends AppCompatActivity
     private Button cfid_FileOpenBTN, cfid_FileDeleteBTN, cfid_HideBTN;
 
     private NavigationView navigationView;
-    private ImageButton ib_Play;
     private String url_down =
             //"http://files.funmaza.info/download/2ed3ab958afb3f78f9bac1fa3708ffeb";
             "http://videos.funmaza.info/storage/0517/Vitamin%20D%201080p%20-%20Ludacris%20feat." +
                     "%20Ty%20Dolla%20Sign%20FunmazaHD.mp4";
 
 
-    private int fileId = 0;
     private Context context;
     private FileDatabase fileDatabase;
     private SQLiteDatabase db;
@@ -121,21 +117,16 @@ public class MainActivity extends AppCompatActivity
     private ArrayList<FileItem> fi_ALL;
     private ArrayList<FileItem> fi_DOWN;
     private ArrayList<FileItem> fi_COMP;
-    private ArrayList<BaseDownloadTask> runningTask;
+
     private ArrayList<FileItem> currentList;
     private RecyclerView rc_list;
     private LinearLayoutManager layoutManager;
     private FlexibleAdapter<FileItem> adapter;
-    private FlexibleAdapter.OnItemClickListener onItemClickListener;
-    private FlexibleAdapter.OnItemLongClickListener onItemLongClickListener;
     private int currentScreen = 0;
     private Toolbar toolbar;
 
-    private List<BaseDownloadTask> youtubeTasks;
-    private List<String> youtubeTaskNames;
-
-    private BaseDownloadTask task1;
-    private BaseDownloadTask task2;
+    private ArrayList<Integer> currentYoutubeTask;
+    
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -158,7 +149,7 @@ public class MainActivity extends AppCompatActivity
         db = fileDatabase.getWritableDatabase();
         fdu = new FileDatabaseUtils(db);
         Init();
-        ListFromDatabase();
+        ListFromDatabase(Rows.TABLE_FILES_NAME);
 
         currentList = fi_ALL;
         adapter = new FlexibleAdapter<>(currentList);
@@ -168,8 +159,8 @@ public class MainActivity extends AppCompatActivity
         rc_list.setAdapter(adapter);
         rc_list.setLayoutManager(new LinearLayoutManager(this));
 
-        adapter.mItemClickListener = onItemClickListener;
-        adapter.mItemLongClickListener = onItemLongClickListener;
+        adapter.mItemClickListener = this;
+        adapter.mItemLongClickListener = this;
 
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
         ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
@@ -195,92 +186,17 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
-    @Override
-    public void onRequestPermissionsResult(int requestCode,
-                                           String permissions[], int[] grantResults) {
-        switch (requestCode) {
-            case PERMISSIONS_WRITE_EXTERNAL_STORAGE: {
-                // If request is cancelled, the result arrays are empty.
-                if (grantResults.length > 0
-                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-
-                    Toast.makeText(this, "Permission Granted.", Toast.LENGTH_SHORT).show();
-
-                } else {
-                    Toast.makeText(this, "Permission Denied.\nGrant Permission", Toast.LENGTH_SHORT).show();
-                    Intent intent = new Intent();
-                    intent.setAction(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
-                    Uri uri = Uri.fromParts("package", getPackageName(), null);
-                    intent.setData(uri);
-                    startActivity(intent);
-                }
-                return;
-            }
-
-            // other 'case' lines to check for other
-            // permissions this app might request
-        }
-    }
-
     private void Init() {
+
+        currentYoutubeTask = new ArrayList<>();
 
         fi_ALL = new ArrayList<>();
         fi_DOWN = new ArrayList<>();
         fi_COMP = new ArrayList<>();
 
-        youtubeTasks = new ArrayList<>();
-        youtubeTaskNames = new ArrayList<>();
 
         layoutInflater = LayoutInflater.from(context);
 
-        onItemClickListener = new FlexibleAdapter.OnItemClickListener() {
-            @Override
-            public boolean onItemClick(int position) {
-                if (actionMode != null && position != RecyclerView.NO_POSITION) {
-                    // Mark the position selected
-                    toggleSelection(position);
-                    return true;
-                } else {
-                    FileItem fi = adapter.getItem(position);
-                    if (fi.getFileStatus() == FileDownloadStatus.completed
-                            || fi.getFileStatus() == FileDownloadStatus.blockComplete) {
-                        ShowFileInfoDialog(fi);
-                    } else if (fi.getFileStatus() == FileDownloadStatus.paused
-                            || fi.getFileStatus() == FileDownloadStatus.error) {
-                        Snacked("Resuming " + fi.getFileName(), 0);
-                        FileDownloader.getImpl()
-                                .create(fi.getFileUrl())
-                                .setForceReDownload(false)
-                                .setPath(fi.getFilePath() + File.separator + fi.getFileName())
-                                .setMinIntervalUpdateSpeed(1000)
-                                .setListener(fdl)
-                                .start();
-                        //ToggleDownload(fi.getFileUrl(), fi.getFilePath(), fi.getFileName(), false, true);
-                    } else if (fi.getFileStatus() == FileDownloadStatus.pending ||
-                            fi.getFileStatus() == FileDownloadStatus.started ||
-                            fi.getFileStatus() == FileDownloadStatus.connected ||
-                            fi.getFileStatus() == FileDownloadStatus.progress ||
-                            fi.getFileStatus() == FileDownloadStatus.retry) {
-                        Snacked(fi.getFileName() + " Paused", 0);
-                        FileDownloader.getImpl().pause((int) fi.getFileId());
-
-                    }
-                    //Snacked(fi.getFileName(), 0);
-                    return false;
-                }
-            }
-        };
-
-        onItemLongClickListener = new FlexibleAdapter.OnItemLongClickListener() {
-            @Override
-            public void onItemLongClick(int position) {
-                if (actionMode == null) {
-                    actionMode = startSupportActionMode(actionModeCallback);
-                    toggleSelection(position);
-                }
-
-            }
-        };
 
         fdl = new FileDownloadListener() {
 
@@ -315,7 +231,9 @@ public class MainActivity extends AppCompatActivity
 
                 String whereColumn = Rows.fileId;
                 String[] whereArgs = {fi.getFileId() + ""};
-                fdu.UpdateFileinDatabase(columns, columnVals, whereColumn, whereArgs);
+                new UpdateDataIntoDB(db).execute(new String[]{Rows.TABLE_FILES_NAME},
+                        columns, columnVals, new String[]{whereColumn}, whereArgs);
+//                fdu.UpdateFileinDatabase(Rows.TABLE_FILES_NAME, columns, columnVals, whereColumn, whereArgs);
             }
 
             @Override
@@ -335,7 +253,9 @@ public class MainActivity extends AppCompatActivity
 
                 String whereColumn = Rows.fileId;
                 String[] whereArgs = {fi.getFileId() + ""};
-                fdu.UpdateFileinDatabase(columns, columnVals, whereColumn, whereArgs);
+                new UpdateDataIntoDB(db).execute(new String[]{Rows.TABLE_FILES_NAME},
+                        columns, columnVals, new String[]{whereColumn}, whereArgs);
+//                fdu.UpdateFileinDatabase(Rows.TABLE_FILES_NAME, columns, columnVals, whereColumn, whereArgs);
             }
 
             @Override
@@ -360,7 +280,9 @@ public class MainActivity extends AppCompatActivity
 
                 String whereColumn = Rows.fileId;
                 String[] whereArgs = {fi.getFileId() + ""};
-                fdu.UpdateFileinDatabase(columns, columnVals, whereColumn, whereArgs);
+                new UpdateDataIntoDB(db).execute(new String[]{Rows.TABLE_FILES_NAME},
+                        columns, columnVals, new String[]{whereColumn}, whereArgs);
+//                fdu.UpdateFileinDatabase(Rows.TABLE_FILES_NAME, columns, columnVals, whereColumn, whereArgs);
             }
 
 
@@ -387,7 +309,9 @@ public class MainActivity extends AppCompatActivity
 
                 String whereColumn = Rows.fileId;
                 String[] whereArgs = {fi.getFileId() + ""};
-                fdu.UpdateFileinDatabase(columns, columnVals, whereColumn, whereArgs);
+                new UpdateDataIntoDB(db).execute(new String[]{Rows.TABLE_FILES_NAME},
+                        columns, columnVals, new String[]{whereColumn}, whereArgs);
+//                fdu.UpdateFileinDatabase(Rows.TABLE_FILES_NAME, columns, columnVals, whereColumn, whereArgs);
             }
 
             @Override
@@ -434,8 +358,10 @@ public class MainActivity extends AppCompatActivity
 
                 String whereColumn = Rows.fileId;
                 String[] whereArgs = {fi.getFileId() + ""};
-                fdu.UpdateFileinDatabase(columns, columnVals, whereColumn, whereArgs);
-                ShowFileInfoDialog(fi);
+                new UpdateDataIntoDB(db).execute(new String[]{Rows.TABLE_FILES_NAME},
+                        columns, columnVals, new String[]{whereColumn}, whereArgs);
+//                fdu.UpdateFileinDatabase(Rows.TABLE_FILES_NAME, columns, columnVals, whereColumn, whereArgs);
+                showFileInfoDialog(fi);
 
             }
 
@@ -467,7 +393,9 @@ public class MainActivity extends AppCompatActivity
 
                 String whereColumn = Rows.fileId;
                 String[] whereArgs = {fi.getFileId() + ""};
-                fdu.UpdateFileinDatabase(columns, columnVals, whereColumn, whereArgs);
+                new UpdateDataIntoDB(db).execute(new String[]{Rows.TABLE_FILES_NAME},
+                        columns, columnVals, new String[]{whereColumn}, whereArgs);
+//                fdu.UpdateFileinDatabase(Rows.TABLE_FILES_NAME, columns, columnVals, whereColumn, whereArgs);
 
             }
 
@@ -491,23 +419,24 @@ public class MainActivity extends AppCompatActivity
 
                 UpdateCurrentList();
 
-                Snacked(task.getFilename() + "\n" + e.getMessage(), 0);
+                snacked(task.getFilename() + "\n" + e.getMessage(), 0);
                 String[] columns = {Rows.fileName, Rows.fileStatus};
                 String[] columnVals = {fi.getFileName(), "" + fi.getFileStatus()};
 
                 String whereColumn = Rows.fileId;
                 String[] whereArgs = {fi.getFileId() + ""};
 
-                fdu.UpdateFileinDatabase(columns, columnVals, whereColumn, whereArgs);
+                new UpdateDataIntoDB(db).execute(new String[]{Rows.TABLE_FILES_NAME},
+                        columns, columnVals, new String[]{whereColumn}, whereArgs);
+//                fdu.UpdateFileinDatabase(Rows.TABLE_FILES_NAME, columns, columnVals, whereColumn, whereArgs);
 
             }
 
             @Override
             protected void warn(BaseDownloadTask task) {
-                Snacked("Warning:\n" + task.getStatus(), 0);
+                snacked("Warning:\n" + task.getStatus(), 0);
             }
         };
-
 
         fdl_youtube = new FileDownloadListener() {
 
@@ -515,40 +444,36 @@ public class MainActivity extends AppCompatActivity
             @Override
             protected void pending(BaseDownloadTask task, int soFarBytes, int totalBytes) {
 
-                if (task.getFilename().contains("task1")) {
-                    FileItem fi = GetFileModelByModel(
-                            new FileItem(task.getId(), task.getFilename(),
-                                    currentProgress(soFarBytes, totalBytes), task.getStatus(), "ETA",
-                                    GetSizeFromBytes(soFarBytes) + "/" + GetSizeFromBytes(totalBytes), "Speed", "",
-                                    task.getUrl(), task.getPath(), task.getFilename()), false);
+                FileItem fi = GetFileModelByModel(
+                        new FileItem(task.getId(), task.getFilename(),
+                                currentProgress(soFarBytes, totalBytes), task.getStatus(), "ETA",
+                                GetSizeFromBytes(soFarBytes) + "/" + GetSizeFromBytes(totalBytes), "Speed", "",
+                                task.getUrl(), task.getPath(), task.getFilename()), false);
 
 
-                    fi.setFileName(task.getFilename());
-                    fi.setFileStatus(task.getStatus());
-                    fi.setFileDate(fi.getFileDate());
-                    fi.setFileSize(GetSizeFromBytes(soFarBytes) + "/" + GetSizeFromBytes(totalBytes));
-                    fi.setFileDName(task.getFilename());
-                    fi.setFileSpeed("-");
-                    fi.setFileUrl(task.getUrl());
-                    String path = task.getPath().substring(0, task.getPath().lastIndexOf("/"));
-                    fi.setFilePath(path);
+                fi.setFileName(task.getFilename());
+                fi.setFileStatus(task.getStatus());
+                fi.setFileDate(fi.getFileDate());
+                fi.setFileSize(GetSizeFromBytes(soFarBytes) + "/" + GetSizeFromBytes(totalBytes));
+                fi.setFileDName(task.getFilename());
+                fi.setFileSpeed("-");
+                fi.setFileUrl(task.getUrl());
+                String path = task.getPath().substring(0, task.getPath().lastIndexOf("/"));
+                fi.setFilePath(path);
 
 
-                    UpdateCurrentList();
+                UpdateCurrentList();
 
 
-                    String[] columns = {Rows.fileName, Rows.fileStatus, Rows.fileUrl, Rows.filePath, Rows.fileDName};
-                    String[] columnVals = {fi.getFileName(), "" + fi.getFileStatus(),
-                            fi.getFileUrl(), fi.getFilePath(), task.getFilename()};
+                String[] columns = {Rows.fileName, Rows.fileStatus, Rows.fileUrl, Rows.filePath, Rows.fileDName};
+                String[] columnVals = {fi.getFileName(), "" + fi.getFileStatus(),
+                        fi.getFileUrl(), fi.getFilePath(), task.getFilename()};
 
-                    String whereColumn = Rows.fileId;
-                    String[] whereArgs = {fi.getFileId() + ""};
-                    fdu.UpdateFileinDatabase(columns, columnVals, whereColumn, whereArgs);
-                }
-
-                if (task.getFilename().contains("task2")) {
-
-                }
+                String whereColumn = Rows.fileId;
+                String[] whereArgs = {fi.getFileId() + ""};
+                new UpdateDataIntoDB(db).execute(new String[]{Rows.TABLE_FILES_NAME},
+                        columns, columnVals, new String[]{whereColumn}, whereArgs);
+//                fdu.UpdateFileinDatabase(Rows.TABLE_FILES_NAME, columns, columnVals, whereColumn, whereArgs);
             }
 
             @Override
@@ -568,7 +493,9 @@ public class MainActivity extends AppCompatActivity
 
                 String whereColumn = Rows.fileId;
                 String[] whereArgs = {fi.getFileId() + ""};
-                fdu.UpdateFileinDatabase(columns, columnVals, whereColumn, whereArgs);
+                new UpdateDataIntoDB(db).execute(new String[]{Rows.TABLE_FILES_NAME},
+                        columns, columnVals, new String[]{whereColumn}, whereArgs);
+//                fdu.UpdateFileinDatabase(Rows.TABLE_FILES_NAME, columns, columnVals, whereColumn, whereArgs);
             }
 
             @Override
@@ -593,8 +520,11 @@ public class MainActivity extends AppCompatActivity
 
                 String whereColumn = Rows.fileId;
                 String[] whereArgs = {fi.getFileId() + ""};
-                fdu.UpdateFileinDatabase(columns, columnVals, whereColumn, whereArgs);
+                new UpdateDataIntoDB(db).execute(new String[]{Rows.TABLE_FILES_NAME},
+                        columns, columnVals, new String[]{whereColumn}, whereArgs);
+//                fdu.UpdateFileinDatabase(Rows.TABLE_FILES_NAME, columns, columnVals, whereColumn, whereArgs);
             }
+
 
             @Override
             protected void progress(BaseDownloadTask task, int soFarBytes, int totalBytes) {
@@ -619,7 +549,9 @@ public class MainActivity extends AppCompatActivity
 
                 String whereColumn = Rows.fileId;
                 String[] whereArgs = {fi.getFileId() + ""};
-                fdu.UpdateFileinDatabase(columns, columnVals, whereColumn, whereArgs);
+                new UpdateDataIntoDB(db).execute(new String[]{Rows.TABLE_FILES_NAME},
+                        columns, columnVals, new String[]{whereColumn}, whereArgs);
+//                fdu.UpdateFileinDatabase(Rows.TABLE_FILES_NAME, columns, columnVals, whereColumn, whereArgs);
             }
 
             @Override
@@ -666,8 +598,10 @@ public class MainActivity extends AppCompatActivity
 
                 String whereColumn = Rows.fileId;
                 String[] whereArgs = {fi.getFileId() + ""};
-                fdu.UpdateFileinDatabase(columns, columnVals, whereColumn, whereArgs);
-                ShowFileInfoDialog(fi);
+                new UpdateDataIntoDB(db).execute(new String[]{Rows.TABLE_FILES_NAME},
+                        columns, columnVals, new String[]{whereColumn}, whereArgs);
+//                fdu.UpdateFileinDatabase(Rows.TABLE_FILES_NAME, columns, columnVals, whereColumn, whereArgs);
+                showFileInfoDialog(fi);
 
             }
 
@@ -699,7 +633,9 @@ public class MainActivity extends AppCompatActivity
 
                 String whereColumn = Rows.fileId;
                 String[] whereArgs = {fi.getFileId() + ""};
-                fdu.UpdateFileinDatabase(columns, columnVals, whereColumn, whereArgs);
+                new UpdateDataIntoDB(db).execute(new String[]{Rows.TABLE_FILES_NAME},
+                        columns, columnVals, new String[]{whereColumn}, whereArgs);
+//                fdu.UpdateFileinDatabase(Rows.TABLE_FILES_NAME, columns, columnVals, whereColumn, whereArgs);
 
             }
 
@@ -723,55 +659,263 @@ public class MainActivity extends AppCompatActivity
 
                 UpdateCurrentList();
 
-                Snacked(task.getFilename() + "\n" + e.getMessage(), 0);
+                snacked(task.getFilename() + "\n" + e.getMessage(), 0);
                 String[] columns = {Rows.fileName, Rows.fileStatus};
                 String[] columnVals = {fi.getFileName(), "" + fi.getFileStatus()};
 
                 String whereColumn = Rows.fileId;
                 String[] whereArgs = {fi.getFileId() + ""};
 
-                fdu.UpdateFileinDatabase(columns, columnVals, whereColumn, whereArgs);
+                new UpdateDataIntoDB(db).execute(new String[]{Rows.TABLE_FILES_NAME},
+                        columns, columnVals, new String[]{whereColumn}, whereArgs);
+//                fdu.UpdateFileinDatabase(Rows.TABLE_FILES_NAME, columns, columnVals, whereColumn, whereArgs);
 
             }
 
             @Override
             protected void warn(BaseDownloadTask task) {
-                Snacked("Warning:\n" + task.getStatus(), 0);
+                snacked("Warning:\n" + task.getStatus(), 0);
             }
         };
-    }
+        fdl_youtube = new FileDownloadListener() {
 
-    private FileDownloadQueueSet StartQueue(String link1, String name1, String name2, String link2) {
-        final FileDownloadQueueSet queueSet = new FileDownloadQueueSet(fdl_youtube);
 
-        final List<BaseDownloadTask> tasks = new ArrayList<>();
+            @Override
+            protected void pending(BaseDownloadTask task, int soFarBytes, int totalBytes) {
 
-        tasks.add(FileDownloader.getImpl().
-                create(link1)
-                .setPath(PATH + File.separator + "SMDM-tmp" + File.separator + name1).setTag("videoFile"));
-        tasks.add(FileDownloader.getImpl().
-                create(link2)
-                .setPath(PATH + File.separator + "SMDM-tmp" + File.separator + name2).setTag("audioFile"));
+                FileItem fi = GetFileModelByModel(
+                        new FileItem(task.getId(), task.getFilename(),
+                                currentProgress(soFarBytes, totalBytes), task.getStatus(), "ETA",
+                                GetSizeFromBytes(soFarBytes) + "/" + GetSizeFromBytes(totalBytes), "Speed", "",
+                                task.getUrl(), task.getPath(), task.getFilename()), true);
 
-        queueSet.disableCallbackProgressTimes(); // do not want each task's download progress's callback,
-        // we just consider which task will completed.
 
-        // auto retry 1 time if download fail
-        queueSet.setAutoRetryTimes(3);
+                fi.setFileName(task.getFilename());
+                fi.setFileStatus(task.getStatus());
+                fi.setFileDate(fi.getFileDate());
+                fi.setFileSize(GetSizeFromBytes(soFarBytes) + "/" + GetSizeFromBytes(totalBytes));
+                fi.setFileDName(task.getFilename());
+                fi.setFileSpeed("-");
+                fi.setFileUrl(task.getUrl());
+                String path = task.getPath().substring(0, task.getPath().lastIndexOf("/"));
+                fi.setFilePath(path);
 
-        queueSet.downloadSequentially(tasks);
-        queueSet.start();
-        return queueSet;
-    }
 
-    private void PauseQueue(FileDownloadQueueSet queueSet) {
+                UpdateCurrentList();
 
-        BaseDownloadTask task1 = FileDownloader.getImpl().create(url_down).setPath(PATH).setListener(fdl_youtube);
-        FileDownloadSerialQueue sd = new FileDownloadSerialQueue();
 
-        sd.enqueue(task1);
-        sd.resume();
+                String[] columns = {Rows.fileName, Rows.fileStatus, Rows.fileUrl, Rows.filePath, Rows.fileDName};
+                String[] columnVals = {fi.getFileName(), "" + fi.getFileStatus(),
+                        fi.getFileUrl(), fi.getFilePath(), task.getFilename()};
 
+                String whereColumn = Rows.fileId;
+                String[] whereArgs = {fi.getFileId() + ""};
+                new UpdateDataIntoDB(db).execute(new String[]{Rows.TABLE_FILES_NAME},
+                        columns, columnVals, new String[]{whereColumn}, whereArgs);
+//                fdu.UpdateFileinDatabase(Rows.TABLE_FILES_NAME, columns, columnVals, whereColumn, whereArgs);
+            }
+
+            @Override
+            protected void started(BaseDownloadTask task) {
+                FileItem fi = GetFileModelByModel(
+                        new FileItem(task.getId(), task.getFilename(),
+                                0, task.getStatus(), "ETA",
+                                "---/---", "Speed", getDateTime(System.currentTimeMillis()),
+                                task.getUrl(), task.getPath(), task.getFilename()), true);
+
+                fi.setFileName(task.getFilename());
+                fi.setFileStatus(task.getStatus());
+                fi.setFileSpeed("-");
+
+                String[] columns = {Rows.fileName, Rows.fileStatus, Rows.fileUrl, Rows.filePath};
+                String[] columnVals = {fi.getFileName(), "" + fi.getFileStatus(), fi.getFileUrl(), fi.getFilePath()};
+
+                String whereColumn = Rows.fileId;
+                String[] whereArgs = {fi.getFileId() + ""};
+                new UpdateDataIntoDB(db).execute(new String[]{Rows.TABLE_FILES_NAME},
+                        columns, columnVals, new String[]{whereColumn}, whereArgs);
+//                fdu.UpdateFileinDatabase(Rows.TABLE_FILES_NAME, columns, columnVals, whereColumn, whereArgs);
+            }
+
+            @Override
+            protected void connected(BaseDownloadTask task, String etag, boolean isContinue,
+                                     int soFarBytes, int totalBytes) {
+                FileItem fi = GetFileModelByModel(
+                        new FileItem(task.getId(), task.getFilename(), currentProgress(soFarBytes, totalBytes),
+                                task.getStatus(), "ETA",
+                                GetSizeFromBytes(soFarBytes) + "/" + GetSizeFromBytes(totalBytes), "Speed",
+                                getDateTime(System.currentTimeMillis()),
+                                task.getUrl(), task.getPath(), task.getFilename()), true);
+
+                fi.setFileName(task.getFilename());
+                fi.setFileStatus(task.getStatus());
+                fi.setFileSpeed("-");
+                fi.setFileSize(GetSizeFromBytes(soFarBytes) + "/" + GetSizeFromBytes(totalBytes));
+
+
+                String[] columns = {Rows.fileName, Rows.fileStatus, Rows.fileSize};
+                String[] columnVals = {fi.getFileName(), "" + fi.getFileStatus(),
+                        GetSizeFromBytes(soFarBytes) + "/" + GetSizeFromBytes(totalBytes)};
+
+                String whereColumn = Rows.fileId;
+                String[] whereArgs = {fi.getFileId() + ""};
+                new UpdateDataIntoDB(db).execute(new String[]{Rows.TABLE_FILES_NAME},
+                        columns, columnVals, new String[]{whereColumn}, whereArgs);
+//                fdu.UpdateFileinDatabase(Rows.TABLE_FILES_NAME, columns, columnVals, whereColumn, whereArgs);
+            }
+
+
+            @Override
+            protected void progress(BaseDownloadTask task, int soFarBytes, int totalBytes) {
+                FileItem fi = GetFileModelByModel(
+                        new FileItem(task.getId(), task.getFilename(),
+                                currentProgress(soFarBytes, totalBytes), task.getStatus(), "ETA",
+                                GetSizeFromBytes(soFarBytes) + "/" + GetSizeFromBytes(totalBytes), "Speed",
+                                getDateTime(System.currentTimeMillis()),
+                                task.getUrl(), task.getPath(), task.getFilename()), true);
+
+                fi.setFileName(task.getFilename());
+                fi.setFileProgress(currentProgress(soFarBytes, totalBytes));
+                fi.setFileStatus(task.getStatus());
+                fi.setFileSize(GetSizeFromBytes(soFarBytes) + "/" + GetSizeFromBytes(totalBytes));
+                fi.setFileSpeed(ConvertSpeed(task.getSpeed()));
+
+                UpdateCurrentList();
+
+                String[] columns = {Rows.fileName, Rows.fileProgress, Rows.fileStatus, Rows.fileSize};
+                String[] columnVals = {fi.getFileName(), currentProgress(soFarBytes, totalBytes) + "",
+                        "" + fi.getFileStatus(), GetSizeFromBytes(soFarBytes) + "/" + GetSizeFromBytes(totalBytes)};
+
+                String whereColumn = Rows.fileId;
+                String[] whereArgs = {fi.getFileId() + ""};
+                new UpdateDataIntoDB(db).execute(new String[]{Rows.TABLE_FILES_NAME},
+                        columns, columnVals, new String[]{whereColumn}, whereArgs);
+//                fdu.UpdateFileinDatabase(Rows.TABLE_FILES_NAME, columns, columnVals, whereColumn, whereArgs);
+            }
+
+            @Override
+            protected void retry(BaseDownloadTask task, Throwable ex, int retryingTimes, int soFarBytes) {
+                FileItem fi = GetFileModelByModel(
+                        new FileItem(task.getId(), task.getFilename(),
+                                0, task.getStatus(), "ETA",
+                                GetSizeFromBytes(soFarBytes) + "/" + "---", "Speed", getDateTime(System.currentTimeMillis()),
+                                task.getUrl(), task.getPath(), task.getFilename()), true);
+
+                fi.setFileName(task.getFilename());
+
+                fi.setFileStatus(task.getStatus());
+                fi.setFileDate(getDateTime(System.currentTimeMillis()));
+                fi.setFileSize(GetSizeFromBytes(soFarBytes) + "/" + "---");
+                fi.setFileSpeed("-");
+
+                UpdateCurrentList();
+            }
+
+            @Override
+            protected void completed(BaseDownloadTask task) {
+                FileItem fi = GetFileModelByModel(
+                        new FileItem(task.getId(), task.getFilename(),
+                                100, task.getStatus(), "ETA",
+                                GetSizeFromBytes(task.getSmallFileTotalBytes()), "Speed", getDateTime(System.currentTimeMillis()),
+                                task.getUrl(), task.getPath(), task.getFilename()), true);
+
+                fi.setFileName(task.getFilename());
+                fi.setFileProgress(100);
+                fi.setFileStatus(task.getStatus());
+                fi.setFileDate(getDateTime(System.currentTimeMillis()));
+                fi.setFileSize(GetSizeFromBytes(task.getSmallFileTotalBytes()));
+                fi.setFileSpeed("-");
+
+                fi_DOWN.remove(fi);
+                fi_COMP.add(fi);
+
+                UpdateCurrentList();
+
+                String[] columns = {Rows.fileName, Rows.fileProgress, Rows.fileStatus, Rows.fileSize, Rows.fileDate};
+                String[] columnVals = {fi.getFileName(), 100 + "", "" + task.getStatus(),
+                        fi.getFileSize(), System.currentTimeMillis() + ""};
+
+                String whereColumn = Rows.fileId;
+                String[] whereArgs = {fi.getFileId() + ""};
+                new UpdateDataIntoDB(db).execute(new String[]{Rows.TABLE_FILES_NAME},
+                        columns, columnVals, new String[]{whereColumn}, whereArgs);
+//                fdu.UpdateFileinDatabase(Rows.TABLE_FILES_NAME, columns, columnVals, whereColumn, whereArgs);
+                showFileInfoDialog(fi);
+
+            }
+
+            @Override
+            protected void paused(BaseDownloadTask task, int soFarBytes, int totalBytes) {
+                FileItem fi = GetFileModelByModel(
+                        new FileItem(task.getId(), task.getFilename(),
+                                currentProgress(soFarBytes, totalBytes), task.getStatus(), "ETA",
+                                GetSizeFromBytes(soFarBytes) + "/" + GetSizeFromBytes(totalBytes), "Speed",
+                                getDateTime(System.currentTimeMillis()),
+                                task.getUrl(), task.getPath(), task.getFilename()), true);
+                if (fi == null)
+                    fi = GetFileModelByModel(
+                            new FileItem(task.getId(), task.getFilename(),
+                                    currentProgress(soFarBytes, totalBytes), task.getStatus(), "ETA",
+                                    GetSizeFromBytes(soFarBytes) + "/" + GetSizeFromBytes(totalBytes), "Speed",
+                                    getDateTime(System.currentTimeMillis()),
+                                    task.getUrl(), task.getPath(), task.getFilename()), true);
+
+                fi.setFileName(task.getFilename());
+                fi.setFileSpeed("-");
+                fi.setFileStatus(task.getStatus());
+
+                UpdateCurrentList();
+
+                String[] columns = {Rows.fileName, Rows.fileProgress, Rows.fileStatus, Rows.fileSize};
+                String[] columnVals = {fi.getFileName(), currentProgress(soFarBytes, totalBytes) + "",
+                        "" + fi.getFileStatus(), GetSizeFromBytes(soFarBytes) + "/" + GetSizeFromBytes(totalBytes)};
+
+                String whereColumn = Rows.fileId;
+                String[] whereArgs = {fi.getFileId() + ""};
+                new UpdateDataIntoDB(db).execute(new String[]{Rows.TABLE_FILES_NAME},
+                        columns, columnVals, new String[]{whereColumn}, whereArgs);
+//                fdu.UpdateFileinDatabase(Rows.TABLE_FILES_NAME, columns, columnVals, whereColumn, whereArgs);
+
+            }
+
+            @Override
+            protected void error(BaseDownloadTask task, Throwable e) {
+                FileItem fi = GetFileModelByModel(
+                        new FileItem(task.getId(), task.getFilename(),
+                                0, task.getStatus(), "ETA", "Size", "Speed", getDateTime(System.currentTimeMillis()),
+                                task.getUrl(), task.getPath(), task.getFilename()), true);
+                if (fi == null)
+                    fi = GetFileModelByModel(
+                            new FileItem(task.getId(), task.getFilename(),
+                                    0, task.getStatus(), "ETA",
+                                    "---/" + GetSizeFromBytes(task.getSmallFileTotalBytes()), "Speed",
+                                    getDateTime(System.currentTimeMillis()),
+                                    task.getUrl(), task.getPath(), task.getFilename()), true);
+
+                fi.setFileName(task.getFilename());
+                fi.setFileStatus(task.getStatus());
+                fi.setFileSpeed("-");
+
+                UpdateCurrentList();
+
+                snacked(task.getFilename() + "\n" + e.getMessage(), 0);
+                String[] columns = {Rows.fileName, Rows.fileStatus};
+                String[] columnVals = {fi.getFileName(), "" + fi.getFileStatus()};
+
+                String whereColumn = Rows.fileId;
+                String[] whereArgs = {fi.getFileId() + ""};
+
+                new UpdateDataIntoDB(db).execute(new String[]{Rows.TABLE_FILES_NAME},
+                        columns, columnVals, new String[]{whereColumn}, whereArgs);
+//                fdu.UpdateFileinDatabase(Rows.TABLE_FILES_NAME, columns, columnVals, whereColumn, whereArgs);
+
+            }
+
+            @Override
+            protected void warn(BaseDownloadTask task) {
+                snacked("Warning:\n" + task.getStatus(), 0);
+            }
+        };
     }
 
     private void ShowDialog(String title, String msg) {
@@ -791,10 +935,12 @@ public class MainActivity extends AppCompatActivity
         if (savedInstanceState == null && Intent.ACTION_SEND.equals(getIntent().getAction())
                 && getIntent().getType() != null && "text/plain".equals(getIntent().getType())) {
 
+
             String videoLink = in.getStringExtra("videoLink");
             String videoName = in.getStringExtra("videoName");
             String audioLink = in.getStringExtra("audioLink");
             String audioName = in.getStringExtra("audioName");
+
 
             String ytLink = getIntent().getStringExtra(Intent.EXTRA_TEXT);
             if (!TextUtils.isEmpty(videoLink) && videoLink != null) {
@@ -817,7 +963,7 @@ public class MainActivity extends AppCompatActivity
                     OpenYoutubeVideo(ytLink);
                     return;
                 } else {
-                    //Snacked(ytLink, 1); //TODO implement webview to open webpages
+                    //snacked(ytLink, 1); //TODO implement webview to open webpages
                 }
             }
         }
@@ -830,21 +976,6 @@ public class MainActivity extends AppCompatActivity
         if (data.getScheme().equals("http") || data.getScheme().equals("https")) {
             String link = data.getScheme() + "://" + data.getHost() + data.getPath();
             new GetNameFromUrl().execute("out", link, "");
-        }
-    }
-
-    public String getRealPathFromURI(Context context, Uri contentUri) {
-        Cursor cursor = null;
-        try {
-            String[] proj = {MediaStore.Images.Media.DATA};
-            cursor = context.getContentResolver().query(contentUri, proj, null, null, null);
-            int column_index = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
-            cursor.moveToFirst();
-            return cursor.getString(column_index);
-        } finally {
-            if (cursor != null) {
-                cursor.close();
-            }
         }
     }
 
@@ -861,37 +992,16 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
-    @Override
-    public void onSaveInstanceState(Bundle outState) {
-        adapter.onSaveInstanceState(outState);
-        super.onSaveInstanceState(outState);
-    }
-
-    @Override
-    protected void onRestoreInstanceState(Bundle savedInstanceState) {
-        super.onRestoreInstanceState(savedInstanceState);
-        // Restore previous state
-        if (savedInstanceState != null) {
-            // Selection
-            adapter.onRestoreInstanceState(savedInstanceState);
-            if (adapter.getSelectedItemCount() > 0) {
-                actionMode = startSupportActionMode(actionModeCallback);
-                setContextTitle(adapter.getSelectedItemCount());
-            }
-        }
-    }
-
-    private void setContextTitle(int count) {
-        actionMode.setTitle(String.valueOf(count) + " " + (count == 1 ? "item selected" : "items selected"));
-    }
-
-    @Override
     public void onClick(View v) {
         switch (v.getId()) {
             case R.id.fab:
                 showDownloadDialog();
                 break;
         }
+    }
+
+    private void setContextTitle(int count) {
+        actionMode.setTitle(String.valueOf(count) + " " + (count == 1 ? "item selected" : "items selected"));
     }
 
     public String GetSizeFromBytes(long bytes) {
@@ -911,10 +1021,10 @@ public class MainActivity extends AppCompatActivity
         return String.format("%.1f %sB/s", bytes / Math.pow(unit, exp), pre);
     }
 
-    public void ListFromDatabase() {
+    public void ListFromDatabase(String tableName) {
 
 
-        Cursor cursor = fdu.getAllData();
+        Cursor cursor = fdu.getAllData(tableName);
 
         ArrayList<HashMap<String, String>> maplist = new ArrayList<HashMap<String, String>>();
         // looping through all rows and adding to list
@@ -1130,7 +1240,7 @@ public class MainActivity extends AppCompatActivity
             @Override
             public void onClick(View view) {
                 if (TextUtils.isEmpty(etUrl.getText().toString())) {
-                    Snacked("Link not found", 0);
+                    snacked("Link not found", 0);
                 } else {
                     if (etUrl.getText().toString() != null
                             && (etUrl.getText().toString().contains("://youtu.be/")
@@ -1167,7 +1277,7 @@ public class MainActivity extends AppCompatActivity
             sharingIntent.putExtra(Intent.EXTRA_TEXT, link);
             startActivity(sharingIntent);
         } else {
-            Snacked("Can't download Youtube Videos", 0);
+            snacked("Can't download Youtube Videos", 0);
         }
     }
 
@@ -1210,7 +1320,7 @@ public class MainActivity extends AppCompatActivity
         cdn_Browse.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Snacked("Browser not implemented yet!!!", 0);
+                snacked("Browser not implemented yet!!!", 0);
             }
         });
         cdn_Cancel.setOnClickListener(new View.OnClickListener() {
@@ -1225,7 +1335,7 @@ public class MainActivity extends AppCompatActivity
             public void onClick(View view) {
                 boolean forceDownload = cbn_forceDownload.isChecked();
                 if (TextUtils.isEmpty(etName.getText().toString())) {
-                    Snacked("File Name Empty!\nEnter Name to continue!", 1);
+                    snacked("File Name Empty!\nEnter Name to continue!", 1);
                 } else {
                     ToggleDownload(etLink.getText().toString(), tvPath.getText().toString(),
                             etName.getText().toString(), forceDownload, false);
@@ -1238,7 +1348,7 @@ public class MainActivity extends AppCompatActivity
 
     }
 
-    private void ShowFileInfoDialog(FileItem fia) {
+    private void showFileInfoDialog(FileItem fia) {
 
         final FileItem fi = GetFileModelByModel(fia, false);
         fileDialogView = layoutInflater.inflate(R.layout.custom_file_info_dialog, null, false);
@@ -1272,7 +1382,7 @@ public class MainActivity extends AppCompatActivity
                     fileUri = Uri.fromFile(file);
                 }
 
-                //Snacked(fileUri.toString(), 0);
+                //snacked(fileUri.toString(), 0);
                 Intent i = new Intent(Intent.ACTION_VIEW);
                 i.setData(fileUri);
                 i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
@@ -1301,13 +1411,13 @@ public class MainActivity extends AppCompatActivity
                         String whereColumn = Rows.fileId;
                         String[] whereArgs = {String.valueOf(fi.getFileId())};
 
-                        fdu.DeleteFileFromDatabase(whereColumn, whereArgs);
-                        Snacked(fi.getFileName() + " Deleted", 0);
+                        fdu.DeleteFileFromDatabase(Rows.TABLE_FILES_NAME, whereColumn, whereArgs);
+                        snacked(fi.getFileName() + " Deleted", 0);
                     } else {
-                        Snacked("Deletion failed!", 0);
+                        snacked("Deletion failed!", 0);
                     }
                 } else {
-                    Snacked(fi.getFileName() + " Not Found\n" +
+                    snacked(fi.getFileName() + " Not Found\n" +
                             "Deleting from list", 0);
 
                     fi_ALL.remove(fi);
@@ -1315,7 +1425,7 @@ public class MainActivity extends AppCompatActivity
                     String whereColumn = Rows.fileId;
                     String[] whereArgs = {String.valueOf(fi.getFileId())};
 
-                    fdu.DeleteFileFromDatabase(whereColumn, whereArgs);
+                    fdu.DeleteFileFromDatabase(Rows.TABLE_FILES_NAME, whereColumn, whereArgs);
 
                     if (fi_DOWN.contains(fi))
                         fi_DOWN.remove(fi);
@@ -1323,7 +1433,7 @@ public class MainActivity extends AppCompatActivity
                     if (fi_COMP.contains(fi))
                         fi_COMP.remove(fi);
 
-                    Snacked(fi.getFileName() + " removed from list", 0);
+                    snacked(fi.getFileName() + " removed from list", 0);
                 }
                 dialog.dismiss();
             }
@@ -1391,7 +1501,7 @@ public class MainActivity extends AppCompatActivity
         return builder;
     }
 
-    private void Snacked(String Message, int length) {
+    private void snacked(String Message, int length) {
         if (length <= 0)
             length = Toast.LENGTH_SHORT;
         else
@@ -1491,7 +1601,7 @@ public class MainActivity extends AppCompatActivity
     }
 
     private FileItem CreateNewFileModel(FileItem fi) {
-        String[] insertData = {fi.getFileId() + "",
+        String[] insertData = {Rows.TABLE_FILES_NAME, fi.getFileId() + "",
                 fi.getFileName(), fi.getFileProgress() + "", fi.getFileSize(), FileDownloadStatus.pending + "",
                 "" + System.currentTimeMillis(), fi.getFileUrl(),
                 fi.getFilePath(), fi.getFileDName()};
@@ -1502,7 +1612,7 @@ public class MainActivity extends AppCompatActivity
     }
 
     private FileItem CreateNewFileModel(int id) {
-        String[] insertData = {id + "",
+        String[] insertData = {Rows.TABLE_FILES_NAME, id + "",
                 "", "0", "-", FileDownloadStatus.pending + "",
                 "" + System.currentTimeMillis(), "",
                 "", ""};
@@ -1517,7 +1627,8 @@ public class MainActivity extends AppCompatActivity
 
     private void ToggleDownload(String fileUrl, String filePath, String fileName,
                                 boolean forceDownload, boolean resume) {
-        //Snacked(fileName + "\n\n" + fileUrl + "\n\n" + forceDownload + "", 1);
+
+        //snacked(fileName + "\n\n" + fileUrl + "\n\n" + forceDownload + "", 1);
 
         String path = filePath + File.separator + fileName;
 
@@ -1532,7 +1643,7 @@ public class MainActivity extends AppCompatActivity
             fi.setFilePath(PATH);
             fi.setFileName(fileName);
 
-            fileId = FileDownloader.getImpl()
+            FileDownloader.getImpl()
                     .create(fi.getFileUrl())
                     .setForceReDownload(forceDownload)
                     .setPath(path)
@@ -1543,18 +1654,18 @@ public class MainActivity extends AppCompatActivity
             return;
         } else {
             if (fileExists) {
-                Snacked(fileName + "\nalready downloaded!!!", 1);
+                snacked(fileName + "\nalready downloaded!!!", 1);
                 return;
             } else {
                 if (fileInModel) {
                     FileItem fi = GetFileModelById(id, !fileInModel);
                     byte status = fi.getFileStatus();
                     if (status == FileDownloadStatus.completed || status == FileDownloadStatus.blockComplete) {
-                        Snacked("File already downloaded\n" +
+                        snacked("File already downloaded\n" +
                                 "To Re-Download, select Force_Download", 1);
                         return;
                     } else if (status == FileDownloadStatus.paused || status == FileDownloadStatus.error) {
-                        fileId = FileDownloader.getImpl()
+                        FileDownloader.getImpl()
                                 .create(fi.getFileUrl())
                                 .setForceReDownload(false)
                                 .setPath(fi.getFilePath() + File.separator + fi.getFileName())
@@ -1578,7 +1689,7 @@ public class MainActivity extends AppCompatActivity
                 fi.setFilePath(PATH);
                 fi.setFileName(fileName);
 
-                fileId = FileDownloader.getImpl()
+                FileDownloader.getImpl()
                         .create(fi.getFileUrl())
                         .setForceReDownload(false)
                         .setPath(path)
@@ -1589,22 +1700,59 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
-    private void StartYouTubeDownload(String[] file1, String[] file2, long totalSize) {
-
-        task1 = FileDownloader.getImpl().create(file1[1]).
-                setPath(PATH + File.separator + file1[0]).setListener(fdl_youtube).setAutoRetryTimes(3).setTag("[task1]");
-
-        task2 = FileDownloader.getImpl().create(file2[1]).
-                setPath(PATH + File.separator + file2[0]).setListener(fdl_youtube).setAutoRetryTimes(3).setTag("[task2]");
+    private void StartYoutubeDownload(String task1Name, String task1Url, String task2Name, String task2Url, boolean forceDownload) {
 
 
-        boolean file1Exist = FileExists(PATH + File.separator + file1[0]);
-        boolean file2Exist = FileExists(PATH + File.separator + file2[0]);
+        String path1 = PATH + File.separator + task1Name;
+        String path2 = PATH + File.separator + task2Name;
 
-        if (file1Exist && new File(PATH + File.separator + file1[1]).length() > Long.parseLong(file1[3])) {
+        final FileDownloadQueueSet queueSet = new FileDownloadQueueSet(fdl_youtube);
 
-        } else {
+        final List<BaseDownloadTask> tasks = new ArrayList<>();
 
+        BaseDownloadTask task1 = FileDownloader.getImpl().create(task1Url).setPath(path1).setTag("task1");
+        int id1 = task1.getId();
+        BaseDownloadTask task2 = FileDownloader.getImpl().create(task2Url).setPath(path2).setTag(id1);
+
+        tasks.add(task1);
+        tasks.add(task2);
+
+        queueSet.setAutoRetryTimes(3);
+
+        queueSet.downloadSequentially(tasks);
+
+        queueSet.start();
+
+    }
+
+    private boolean FileExists(String path) {
+        File file = new File(path);
+        return file.exists();
+    }
+
+    private void KillApp() {
+        onDestroy();
+        System.exit(0);
+    }
+
+    private void ChangeList(ArrayList<FileItem> list) {
+        adapter.updateDataSet(list);
+    }
+
+    private void UpdateCurrentList() {
+        switch (currentScreen) {
+            case 0:
+                currentList = fi_ALL;
+                ChangeList(currentList);
+                break;
+            case 1:
+                currentList = fi_DOWN;
+                ChangeList(currentList);
+                break;
+            case 2:
+                currentList = fi_COMP;
+                ChangeList(currentList);
+                break;
         }
     }
 
@@ -1621,7 +1769,7 @@ public class MainActivity extends AppCompatActivity
 
                 String whereColumn = Rows.fileId;
                 String[] whereArgs = {fi_ALL.get(i).getFileId() + ""};
-                fdu.UpdateFileinDatabase(columns, columnVals, whereColumn, whereArgs);
+                fdu.UpdateFileinDatabase(Rows.TABLE_FILES_NAME, columns, columnVals, whereColumn, whereArgs);
             }
         }
         FileDownloader.getImpl().pauseAll();
@@ -1629,11 +1777,6 @@ public class MainActivity extends AppCompatActivity
         db.close();
         fileDatabase.close();
         super.onDestroy();
-    }
-
-    private boolean FileExists(String path) {
-        File file = new File(path);
-        return file.exists();
     }
 
     @Override
@@ -1660,8 +1803,8 @@ public class MainActivity extends AppCompatActivity
         // as you specify a parent activity in AndroidManifest.xml.
         switch (item.getItemId()) {
             case R.id.action_settings:
-                //startActivity(new Intent(this, Settings.class));
-                Snacked("Settings not implemented yet!", 1);
+                startActivity(new Intent(this, Settings.class));
+//                snacked("Settings not implemented yet!", 1);
                 break;
             case R.id.action_exit:
                 KillApp();
@@ -1669,11 +1812,6 @@ public class MainActivity extends AppCompatActivity
         }
 
         return super.onOptionsItemSelected(item);
-    }
-
-    private void KillApp() {
-        onDestroy();
-        System.exit(0);
     }
 
     @Override
@@ -1757,24 +1895,74 @@ public class MainActivity extends AppCompatActivity
         return true;
     }
 
-    private void ChangeList(ArrayList<FileItem> list) {
-        adapter.updateDataSet(list);
+    @Override
+    public void onRequestPermissionsResult(int requestCode,
+                                           String permissions[], int[] grantResults) {
+        switch (requestCode) {
+            case PERMISSIONS_WRITE_EXTERNAL_STORAGE: {
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+
+                    Toast.makeText(this, "Permission Granted.", Toast.LENGTH_SHORT).show();
+
+                } else {
+                    Toast.makeText(this, "Permission Denied.\nGrant Permission", Toast.LENGTH_SHORT).show();
+                    Intent intent = new Intent();
+                    intent.setAction(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                    Uri uri = Uri.fromParts("package", getPackageName(), null);
+                    intent.setData(uri);
+                    startActivity(intent);
+                }
+                return;
+            }
+
+            // other 'case' lines to check for other
+            // permissions this app might request
+        }
     }
 
-    private void UpdateCurrentList() {
-        switch (currentScreen) {
-            case 0:
-                currentList = fi_ALL;
-                ChangeList(currentList);
-                break;
-            case 1:
-                currentList = fi_DOWN;
-                ChangeList(currentList);
-                break;
-            case 2:
-                currentList = fi_COMP;
-                ChangeList(currentList);
-                break;
+    @Override
+    public boolean onItemClick(int position) {
+        if (actionMode != null && position != RecyclerView.NO_POSITION) {
+            // Mark the position selected
+            toggleSelection(position);
+            return true;
+        } else {
+            FileItem fi = adapter.getItem(position);
+            if (fi.getFileStatus() == FileDownloadStatus.completed
+                    || fi.getFileStatus() == FileDownloadStatus.blockComplete) {
+                showFileInfoDialog(fi);
+            } else if (fi.getFileStatus() == FileDownloadStatus.paused
+                    || fi.getFileStatus() == FileDownloadStatus.error) {
+                snacked("Resuming " + fi.getFileName(), 0);
+                FileDownloader.getImpl()
+                        .create(fi.getFileUrl())
+                        .setForceReDownload(false)
+                        .setPath(fi.getFilePath() + File.separator + fi.getFileName())
+                        .setMinIntervalUpdateSpeed(1000)
+                        .setListener(fdl)
+                        .start();
+                //ToggleDownload(fi.getFileUrl(), fi.getFilePath(), fi.getFileName(), false, true);
+            } else if (fi.getFileStatus() == FileDownloadStatus.pending ||
+                    fi.getFileStatus() == FileDownloadStatus.started ||
+                    fi.getFileStatus() == FileDownloadStatus.connected ||
+                    fi.getFileStatus() == FileDownloadStatus.progress ||
+                    fi.getFileStatus() == FileDownloadStatus.retry) {
+                snacked(fi.getFileName() + " Paused", 0);
+                FileDownloader.getImpl().pause((int) fi.getFileId());
+
+            }
+            //snacked(fi.getFileName(), 0);
+            return false;
+        }
+    }
+
+    @Override
+    public void onItemLongClick(int position) {
+        if (actionMode == null) {
+            actionMode = startSupportActionMode(actionModeCallback);
+            toggleSelection(position);
         }
     }
 
@@ -1827,7 +2015,8 @@ public class MainActivity extends AppCompatActivity
                         String[] file1 = {fileInfo[1], fileInfo[2], fileInfo[3], fileInfo[4]};
                         String[] file2 = {fileInfo[5], fileInfo[6], fileInfo[7], fileInfo[8]};
                         long totalSize = Long.parseLong(fileInfo[3]) + Long.parseLong(fileInfo[7]);
-                        StartYouTubeDownload(file1, file2, totalSize);
+                        StartYoutubeDownload(file1[0], file1[1], file2[0], file2[1], false);
+                        //StartYouTubeDownload(file1, file2, totalSize);
 //                        ShowDialog("YouTube",
 //                                "FirstFileName: " + fileInfo[1] +
 //                                        "\n\nFirstFileLink: " + fileInfo[2] +
@@ -1841,7 +2030,7 @@ public class MainActivity extends AppCompatActivity
                     }
 
                 } else {
-                    Snacked(result[0] + "\n\n" + result[1] + "\n\n" + result[2], 1);
+                    snacked(result[0] + "\n\n" + result[1] + "\n\n" + result[2], 1);
                 }
 
             }
@@ -1886,7 +2075,8 @@ public class MainActivity extends AppCompatActivity
                 String secondFileExt = (twoFiles) ? secondFileName.substring(secondFileName.lastIndexOf('.') + 1, secondFileName.length()) : "";
                 publishProgress(90);
                 if (twoFiles) {
-                    String[] result = {"file", firstFileName, /*firstFileLink*/ params[1], firstFileSize, firstFileExt, secondFileName, /*secondFileLink*/ link, secondFileSize, secondFileExt};
+                    String[] result = {"file", firstFileName, /*firstFileLink*/ params[1], firstFileSize,
+                            firstFileExt, secondFileName, /*secondFileLink*/ link, secondFileSize, secondFileExt};
                     publishProgress(100);
                     return result;
                 } else {
@@ -1991,7 +2181,7 @@ public class MainActivity extends AppCompatActivity
                         String whereColumn = Rows.fileId;
                         String[] whereArgs = {String.valueOf(selectedList.get(i).getFileId())};
 
-                        fdu.DeleteFileFromDatabase(whereColumn, whereArgs);
+                        fdu.DeleteFileFromDatabase(Rows.TABLE_FILES_NAME, whereColumn, whereArgs);
 
                         if (fi_DOWN.contains(selectedList.get(i)))
                             fi_DOWN.remove(selectedList.get(i));
@@ -2045,7 +2235,28 @@ public class MainActivity extends AppCompatActivity
 
         @Override
         protected Boolean doInBackground(String... params) {
-            this.fdu.InsertDataIntoTable(params[0], params[1], params[2], params[3], params[4], params[5], params[6], params[7], params[8]);
+            this.fdu.InsertDataIntoTable(params[0], params[1], params[2], params[3], params[4],
+                    params[5], params[6], params[7], params[8], params[9]);
+            return true;
+        }
+    }
+
+    public class UpdateDataIntoDB extends AsyncTask<String[], Integer, Boolean> {
+
+        FileDatabaseUtils fdu;
+
+        public UpdateDataIntoDB(SQLiteDatabase db) {
+            this.fdu = new FileDatabaseUtils(db);
+        }
+
+        @Override
+        protected void onPostExecute(Boolean aBoolean) {
+            super.onPostExecute(aBoolean);
+        }
+
+        @Override
+        protected Boolean doInBackground(String[]... params) {
+            this.fdu.UpdateFileinDatabase(params[0][0], params[1], params[2], params[3][0], params[4]);
             return true;
         }
     }
